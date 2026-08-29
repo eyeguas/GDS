@@ -1,0 +1,498 @@
+/* Modern reader for the original GDS lesson files. No lesson text is duplicated here. */
+const MODES = {
+  classroom: { label: 'Classroom', icon: '◫', prefix: 'LSN', description: 'Aprende cada operación paso a paso, con explicación y práctica guiada.' },
+  agency: { label: 'Agency', icon: '⌘', prefix: 'AM', description: 'Practica situaciones de agencia en un terminal guiado.' },
+  review: { label: 'Review', icon: '✓', prefix: 'Q', description: 'Pon a prueba tus conocimientos con 10 preguntas por lección.' }
+};
+const LESSON_THEMES = [
+  [1, 4, '✈', 'Availability', 'availability'],
+  [5, 7, '✦', 'Selling', 'selling'],
+  [8, 12, '◫', 'PNR', 'pnr'],
+  [13, 15, '⊕', 'Optional elements', 'optional'],
+  [16, 20, '↻', 'PNR operations', 'pnr-operations'],
+  [21, 23, '◇', 'Fares', 'fares'],
+  [24, 27, '€', 'Pricing', 'pricing'],
+  [28, 30, '⚙', 'Utils', 'utils'],
+  [31, 35, '⌂', 'Hotels', 'hotel'],
+  [36, 40, '▱', 'Cars and Miscellaneous', 'cars']
+];
+// A small library of theme-tinted illustrations shown beside each step. Every shape uses
+// currentColor, so wrapping one in an element with a theme's accent color (see styles.css)
+// recolors it automatically — one drawing per topic, ten palettes for free.
+function illustrationBadge(inner) {
+  return `<svg viewBox="0 0 200 200" role="img" aria-hidden="true" focusable="false"><circle cx="100" cy="100" r="96" fill="currentColor" opacity=".12"/><circle cx="100" cy="100" r="72" fill="currentColor" opacity=".09"/>${inner}</svg>`;
+}
+const ILLUSTRATIONS = {
+  flight: illustrationBadge('<path d="M45 128c40-58 66-78 96-78 6 0 8 5 4 9l-24 24 10 34-14 6-16-28-18 18 4 16-10 6-10-20-20-10 6-10 16 4 18-18-28-16 6-14 34 10z" fill="currentColor"/><path d="M52 146c22-4 44-13 62-31" stroke="currentColor" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" fill="none" opacity=".55"/>'),
+  ticket: illustrationBadge('<rect x="46" y="70" width="108" height="62" rx="10" fill="currentColor"/><path d="M100 82v6m0 12v6m0 12v6m0 12v6" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".6"/><path d="m62 100 9 9 15-17" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><rect x="118" y="93" width="24" height="6" rx="3" fill="#fff" opacity=".85"/><rect x="118" y="105" width="17" height="6" rx="3" fill="#fff" opacity=".6"/>'),
+  booking: illustrationBadge('<rect x="56" y="52" width="88" height="104" rx="12" fill="currentColor"/><rect x="72" y="76" width="56" height="7" rx="3.5" fill="#fff" opacity=".9"/><rect x="72" y="92" width="56" height="7" rx="3.5" fill="#fff" opacity=".6"/><rect x="72" y="108" width="34" height="7" rx="3.5" fill="#fff" opacity=".6"/><circle cx="118" cy="132" r="16" fill="#fff"/><path d="m111 132 5 5 10-11" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>'),
+  document: illustrationBadge('<rect x="50" y="62" width="100" height="76" rx="10" fill="currentColor"/><circle cx="76" cy="90" r="14" fill="#fff" opacity=".92"/><rect x="100" y="82" width="36" height="6" rx="3" fill="#fff" opacity=".85"/><rect x="100" y="94" width="28" height="6" rx="3" fill="#fff" opacity=".6"/><rect x="62" y="114" width="76" height="6" rx="3" fill="#fff" opacity=".5"/><rect x="62" y="124" width="50" height="6" rx="3" fill="#fff" opacity=".5"/>'),
+  terminal: illustrationBadge('<rect x="48" y="58" width="104" height="72" rx="9" fill="currentColor"/><rect x="60" y="70" width="80" height="48" rx="3" fill="#132038"/><rect x="68" y="80" width="36" height="5" rx="2.5" fill="#fff" opacity=".9"/><rect x="68" y="90" width="52" height="5" rx="2.5" fill="#fff" opacity=".6"/><rect x="68" y="100" width="20" height="5" rx="2.5" fill="#fff" opacity=".9"/><rect x="86" y="134" width="28" height="8" rx="3" fill="currentColor"/><rect x="70" y="142" width="60" height="7" rx="3.5" fill="currentColor" opacity=".7"/>'),
+  tag: illustrationBadge('<path d="M62 58h46l40 40-52 52-40-40V58z" fill="currentColor"/><circle cx="78" cy="74" r="8" fill="#fff" opacity=".9"/><text x="100" y="112" text-anchor="middle" font-size="30" font-weight="700" fill="#fff" font-family="ui-sans-serif,system-ui">€</text>'),
+  coins: illustrationBadge('<circle cx="82" cy="118" r="30" fill="currentColor"/><circle cx="120" cy="90" r="30" fill="currentColor" opacity=".8"/><text x="120" y="99" text-anchor="middle" font-size="26" font-weight="700" fill="#fff" font-family="ui-sans-serif,system-ui">$</text>'),
+  gear: illustrationBadge('<path d="M100 58a11 11 0 0 1 11 9l1 9 11 5 8-6a11 11 0 0 1 14 1l4 4a11 11 0 0 1 1 14l-6 8 5 11 9 1a11 11 0 0 1 9 11v6a11 11 0 0 1-9 11l-9 1-5 11 6 8a11 11 0 0 1-1 14l-4 4a11 11 0 0 1-14 1l-8-6-11 5-1 9a11 11 0 0 1-11 9h-6a11 11 0 0 1-11-9l-1-9-11-5-8 6a11 11 0 0 1-14-1l-4-4a11 11 0 0 1-1-14l6-8-5-11-9-1a11 11 0 0 1-9-11v-6a11 11 0 0 1 9-11l9-1 5-11-6-8a11 11 0 0 1 1-14l4-4a11 11 0 0 1 14-1l8 6 11-5 1-9a11 11 0 0 1 11-9z" fill="currentColor"/><circle cx="100" cy="100" r="23" fill="#fff"/>'),
+  hotel: illustrationBadge('<rect x="52" y="112" width="96" height="14" rx="4" fill="currentColor"/><path d="M60 112V90a10 10 0 0 1 10-10h14a10 10 0 0 1 10 10v22" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/><circle cx="79" cy="100" r="4.5" fill="#fff"/><rect x="104" y="70" width="44" height="42" rx="6" fill="currentColor" opacity=".85"/><rect x="112" y="80" width="10" height="10" rx="2" fill="#fff" opacity=".9"/><rect x="128" y="80" width="10" height="10" rx="2" fill="#fff" opacity=".9"/><rect x="112" y="96" width="10" height="10" rx="2" fill="#fff" opacity=".9"/><rect x="128" y="96" width="10" height="10" rx="2" fill="#fff" opacity=".9"/>'),
+  car: illustrationBadge('<path d="M46 122c0-6 4-11 10-12l8-20c3-8 11-13 20-13h32c9 0 17 5 20 13l8 20c6 1 10 6 10 12v14a6 6 0 0 1-6 6h-8a14 14 0 0 1-28 0H88a14 14 0 0 1-28 0h-8a6 6 0 0 1-6-6v-14Z" fill="currentColor"/><path d="M70 100l6-14a8 8 0 0 1 7-5h34a8 8 0 0 1 7 5l6 14Z" fill="#fff" opacity=".85"/><circle cx="74" cy="140" r="9" fill="#22314a"/><circle cx="126" cy="140" r="9" fill="#22314a"/>'),
+  passenger: illustrationBadge('<circle cx="100" cy="82" r="24" fill="currentColor"/><path d="M56 152c4-26 22-40 44-40s40 14 44 40a6 6 0 0 1-6 7H62a6 6 0 0 1-6-7Z" fill="currentColor"/>'),
+  family: illustrationBadge('<circle cx="80" cy="78" r="21" fill="currentColor"/><path d="M44 144c3-22 18-34 36-34s33 12 36 34a5 5 0 0 1-5 6H49a5 5 0 0 1-5-6Z" fill="currentColor"/><circle cx="134" cy="94" r="15" fill="currentColor" opacity=".75"/><path d="M112 146c2-16 12-25 26-25s24 9 26 25a4 4 0 0 1-4 5h-44a4 4 0 0 1-4-5Z" fill="currentColor" opacity=".75"/>'),
+  phone: illustrationBadge('<path d="M74 54c6-2 12 1 14 7l5 13c2 5 0 10-4 13l-8 6c5 14 15 24 29 29l6-8c3-4 8-6 13-4l13 5c6 2 9 8 7 14l-3 9c-2 6-8 10-14 9-38-6-66-34-72-72-1-6 3-12 9-14z" fill="currentColor"/>'),
+  calendar: illustrationBadge('<rect x="52" y="62" width="96" height="86" rx="10" fill="currentColor"/><rect x="52" y="62" width="96" height="24" rx="10" fill="currentColor"/><rect x="70" y="52" width="8" height="20" rx="4" fill="currentColor"/><rect x="122" y="52" width="8" height="20" rx="4" fill="currentColor"/><rect x="66" y="98" width="16" height="14" rx="3" fill="#fff" opacity=".55"/><rect x="92" y="98" width="16" height="14" rx="3" fill="#fff" opacity=".55"/><rect x="118" y="98" width="16" height="14" rx="3" fill="#fff" opacity=".95"/><rect x="66" y="120" width="16" height="14" rx="3" fill="#fff" opacity=".55"/><rect x="92" y="120" width="16" height="14" rx="3" fill="#fff" opacity=".55"/>'),
+  seat: illustrationBadge('<path d="M70 70a10 10 0 0 1 20 0v34h20V70a10 10 0 0 1 20 0v50h6a8 8 0 0 1 8 8v6H56v-6a8 8 0 0 1 8-8h6z" fill="currentColor"/><rect x="66" y="132" width="68" height="10" rx="5" fill="currentColor" opacity=".7"/>'),
+  luggage: illustrationBadge('<rect x="54" y="82" width="92" height="66" rx="12" fill="currentColor"/><path d="M82 82V68a8 8 0 0 1 8-8h20a8 8 0 0 1 8 8v14" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><rect x="70" y="98" width="8" height="34" rx="4" fill="#fff" opacity=".55"/><rect x="96" y="98" width="8" height="34" rx="4" fill="#fff" opacity=".55"/><rect x="122" y="98" width="8" height="34" rx="4" fill="#fff" opacity=".55"/>'),
+  search: illustrationBadge('<circle cx="90" cy="90" r="30" fill="none" stroke="currentColor" stroke-width="12"/><path d="M112 112l28 28" stroke="currentColor" stroke-width="13" stroke-linecap="round"/>'),
+  globe: illustrationBadge('<circle cx="100" cy="100" r="46" fill="currentColor"/><ellipse cx="100" cy="100" rx="46" ry="18" fill="none" stroke="#fff" stroke-width="3.5" opacity=".55"/><ellipse cx="100" cy="100" rx="18" ry="46" fill="none" stroke="#fff" stroke-width="3.5" opacity=".55"/><path d="M54 100h92" stroke="#fff" stroke-width="3.5" opacity=".55"/>')
+};
+// One safe default illustration per lesson group, guaranteeing every step gets something
+// relevant even when no more specific keyword below matches.
+const THEME_ILLUSTRATION = {
+  availability: 'flight', selling: 'ticket', pnr: 'booking', optional: 'document',
+  'pnr-operations': 'terminal', fares: 'tag', pricing: 'coins', utils: 'gear',
+  hotel: 'hotel', cars: 'car'
+};
+// Finer-grained illustrations chosen when the step's own text mentions a more specific
+// topic than its lesson group, checked in this order (first match wins).
+const ILLUSTRATION_KEYWORDS = [
+  ['family', ['CHILD', 'INFANT', ' CHD ', ' INF ', 'MINOR', 'UMNR']],
+  ['phone', ['PHONE', 'TELEPHONE', 'CONTACT']],
+  ['hotel', ['HOTEL', 'ROOM', 'CHAIN CODE']],
+  ['car', ['RENTAL CAR', 'CAR RENTAL', 'DRIVER']],
+  ['luggage', ['BAGGAGE', 'LUGGAGE']],
+  ['seat', ['SEAT']],
+  ['calendar', ['DEPARTURE DATE', 'TIME LIMIT', 'CALENDAR', 'SCHEDULE CHANGE']],
+  ['coins', ['PRICE', 'PAYMENT', 'CASH', 'CHEQUE', 'CREDIT CARD', 'FARE CALCULATION']],
+  ['tag', ['FARE', 'DISCOUNT']],
+  ['document', ['REMARK', 'OSI', 'SSR', 'SPECIAL SERVICE']],
+  ['passenger', ['PASSENGER', 'SURNAME', 'TRAVELER', 'TRAVELLER']],
+  ['globe', ['CITY', 'AIRPORT', 'COUNTRY']],
+  ['search', ['DISPLAY', 'RETRIEVE', 'QUEUE']]
+];
+function pickIllustration(screen, theme) {
+  const haystack = ' ' + [...screen.text, ...screen.answers].join(' ').toUpperCase() + ' ';
+  for (const [id, keywords] of ILLUSTRATION_KEYWORDS) {
+    if (keywords.some(keyword => haystack.includes(keyword))) return id;
+  }
+  return THEME_ILLUSTRATION[theme.kind] || 'flight';
+}
+const SOURCE = location.pathname.includes('/modern/') ? '../orion/GDS/' : './orion/GDS/';
+const app = document.querySelector('#app');
+const nav = document.querySelector('#mode-nav');
+const crumb = document.querySelector('#breadcrumb');
+const searchDialog = document.querySelector('#search-dialog');
+const searchInput = document.querySelector('#search-input');
+const searchResults = document.querySelector('#search-results');
+const progressDialog = document.querySelector('#progress-dialog');
+const progressDetails = document.querySelector('#progress-details');
+let contents = [];
+let activeMode = null;
+let activeLesson = null;
+let searchIndex = null;
+let session = null;
+
+function storage() { return JSON.parse(localStorage.getItem('gds-training-progress') || '{}'); }
+function save(data) { localStorage.setItem('gds-training-progress', JSON.stringify(data)); searchIndex = null; updateProgress(); }
+function progressKey(mode, number) { return `${mode}-${number}`; }
+function isDone(mode, number) { return Boolean(storage()[progressKey(mode, number)]); }
+function updateProgress() {
+  const count = Object.keys(storage()).length;
+  document.querySelector('#progress-label').textContent = `${count} de 120 lecciones`;
+  document.querySelector('#progress-bar').style.width = `${(count / 120) * 100}%`;
+}
+function completedIn(mode) { return contents.filter(item => isDone(mode, item.number)).length; }
+function positions() { return JSON.parse(localStorage.getItem('gds-training-position') || '{}'); }
+function savePosition(mode, number, index) {
+  const data = positions();
+  data[progressKey(mode, number)] = index;
+  localStorage.setItem('gds-training-position', JSON.stringify(data));
+}
+function clearPosition(mode, number) {
+  const data = positions();
+  delete data[progressKey(mode, number)];
+  localStorage.setItem('gds-training-position', JSON.stringify(data));
+}
+function savedPosition(mode, number) {
+  const value = positions()[progressKey(mode, number)];
+  return typeof value === 'number' ? value : 0;
+}
+// A separate, stricter normalizer for answer-checking: unlike normal() (used by
+// search, which still needs single spaces between terms), this strips ALL
+// whitespace so any extra or misplaced space truly never affects an answer.
+function normalAnswer(value) {
+  const stripped = String(value).toUpperCase().replace(/\s+/g, '');
+  // A purely numeric answer is a selected line/value (e.g. "3"); leading zeros
+  // ('03') don't change what was selected, so compare them as numbers.
+  return /^\d+$/.test(stripped) ? String(Number(stripped)) : stripped;
+}
+function openProgress() {
+  progressDetails.innerHTML = `<p class="lead">Consulta tus lecciones superadas en este dispositivo.</p>${Object.entries(MODES).map(([id, mode]) => {
+    const completed = completedIn(id);
+    return `<div class="progress-detail"><span class="symbol">${mode.icon}</span><span><strong>${mode.label}</strong><small>${completed === 40 ? 'Modo completado' : `${40 - completed} lecciones pendientes`}</small></span><span>${completed} / 40</span></div>`;
+  }).join('')}`;
+  progressDialog.showModal();
+}
+function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[c]); }
+function normal(value) { return value.toUpperCase().replace(/\s+/g, ' ').trim(); }
+function normalPassword(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+}
+function lessonTheme(number) {
+  const match = LESSON_THEMES.find(([from, to]) => number >= from && number <= to) || LESSON_THEMES[0];
+  return { icon: match[2], label: match[3], kind: match[4] };
+}
+function solutionPassword(title, lessonNumber, pageNumber) {
+  const firstTitleWord = title.trim().split(/\s+/)[0];
+  return normalPassword(String(lessonNumber) + firstTitleWord + String(pageNumber));
+}
+function showSolution(title, lessonNumber, pageNumber, answers) {
+  const entered = prompt('Introduce la contraseña de la solución.');
+  if (entered === null) return;
+  if (normalPassword(entered) !== solutionPassword(title, lessonNumber, pageNumber)) {
+    alert('Contraseña incorrecta.');
+    return;
+  }
+  alert('Solución: ' + answers[0]);
+}
+
+function parseDirectory(text) {
+  return text.split(/\r?\n/).flatMap(line => {
+    const match = line.match(/^\s*(\d+)\s+(.+?)\s{2,}(\d+)\s+(.+)$/);
+    if (match) return [
+      { number: Number(match[1]), title: match[2].trim() },
+      { number: Number(match[3]), title: match[4].trim() }
+    ];
+    const single = line.match(/^\s*(\d+)\s+(.+?)\s*$/);
+    return single ? [{ number: Number(single[1]), title: single[2].trim() }] : [];
+  }).sort((a, b) => a.number - b.number);
+}
+function sourceFile(mode, number, part) { return `${MODES[mode].prefix}${number}${part || ''}.DAT`; }
+function decodeLegacy(value) {
+  // DOS used ^ as a cursor marker with no visible meaning; \n/\" are escaped literals
+  // in the source, and <PgDn> is a paging hint the modern, always-scrolling UI doesn't need.
+  // Markers like [ ~ { } ! are NOT stripped here anymore: they carry real structure
+  // (bullet points, field diagrams) that formatInstructionHtml() below interprets.
+  // The original DAT files (never edited) name the legacy system "AMADEUS"; the app
+  // layer rebrands every mention to "GDS" wherever it is displayed (including inside
+  // compound words like AMADEUSPRO -> GDSPRO), matching the rest of the GDS Training rebrand.
+  return value.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/<PgDn>/gi, '').replace(/AMADEUS/gi, 'GDS');
+}
+// A flat, fully-cleaned rendering of a text line, for contexts that show plain text
+// rather than the structured instruction layout (search results, the review summary).
+function plainText(line) {
+  return line.replace(/^\s*\[\s*/, '').replace(/[\^~\[\]!{}]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// --- Instruction formatting -------------------------------------------------------
+// The original lessons encode more structure than plain sentences: a leading "[" marks
+// a bullet point, "CODE   description" runs are little glossaries, and "term~~~~{ }~~~~term"
+// is DOS line-art pairing two field names. classifyLine() recognizes these per source
+// line; groupBlocks() merges consecutive lines of the same kind into one block (a
+// paragraph, a list, a glossary, a labelled example, or a simplified field diagram) so
+// the lesson reads as formatted text instead of one flat block of terminal-like prose.
+function cleanupTokens(text) {
+  return text.replace(/\^/g, '').replace(/[~{}!\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function classifyLine(raw) {
+  if (!raw.trim()) return { kind: 'blank' };
+  const bulletMatch = raw.match(/^\s*\[\s*(.*)$/);
+  if (bulletMatch) {
+    const content = cleanupTokens(bulletMatch[1]);
+    return content ? { kind: 'bullet', content } : { kind: 'blank' };
+  }
+  const pairMatch = raw.match(/^\s*(.+?)\s*~{2,}\{\s*\}~{2,}\s*(.+?)\s*$/);
+  if (pairMatch) return { kind: 'legend', left: cleanupTokens(pairMatch[1]), right: cleanupTokens(pairMatch[2]) };
+  if (/[~{}]/.test(raw)) {
+    const content = cleanupTokens(raw);
+    return content ? { kind: 'legend', text: content } : { kind: 'blank' };
+  }
+  const defMatch = raw.match(/^\s*([A-Z][A-Z0-9/]{0,7})\^?\s{3,}(\S.*?)(?:\s{3,}([A-Z][A-Z0-9/]{0,7})\^?\s{3,}(\S.*))?$/);
+  if (defMatch) {
+    const pairs = [{ code: defMatch[1], desc: cleanupTokens(defMatch[2]) }];
+    if (defMatch[3]) pairs.push({ code: defMatch[3], desc: cleanupTokens(defMatch[4]) });
+    return { kind: 'definition', pairs };
+  }
+  const indent = raw.match(/^ */)[0].length;
+  const trimmed = cleanupTokens(raw);
+  if (!trimmed) return { kind: 'blank' };
+  if (indent >= 12 && trimmed.length <= 44 && !/[a-z]{4,}/.test(trimmed)) {
+    return { kind: 'example', content: trimmed };
+  }
+  return { kind: 'prose', content: trimmed };
+}
+function groupBlocks(rawLines) {
+  const blocks = [];
+  let current = null;
+  let blankPending = false;
+  for (const raw of rawLines) {
+    const line = classifyLine(raw);
+    if (line.kind === 'blank') { blankPending = true; continue; }
+    const canMerge = current && current.kind === line.kind && !(blankPending && line.kind === 'prose');
+    if (canMerge) {
+      if (line.kind === 'bullet') current.items.push(line.content);
+      else if (line.kind === 'legend') current.items.push(line.left ? { left: line.left, right: line.right } : { text: line.text });
+      else if (line.kind === 'definition') current.pairs.push(...line.pairs);
+      else if (line.kind === 'example') current.lines.push(line.content);
+      else if (line.kind === 'prose') current.text += ' ' + line.content;
+    } else {
+      if (current) blocks.push(current);
+      if (line.kind === 'bullet') current = { kind: 'bullet', items: [line.content] };
+      else if (line.kind === 'legend') current = { kind: 'legend', items: [line.left ? { left: line.left, right: line.right } : { text: line.text }] };
+      else if (line.kind === 'definition') current = { kind: 'definition', pairs: [...line.pairs] };
+      else if (line.kind === 'example') current = { kind: 'example', lines: [line.content] };
+      else if (line.kind === 'prose') current = { kind: 'prose', text: line.content };
+    }
+    blankPending = false;
+  }
+  if (current) blocks.push(current);
+  return blocks;
+}
+const KEYWORD_RE = /\b[A-Z][A-Z0-9]{1,9}\b/g;
+function boldKeywords(escapedText) {
+  return escapedText.replace(KEYWORD_RE, match => `<strong class="kw">${match}</strong>`);
+}
+function renderInstructionBlock(block) {
+  switch (block.kind) {
+    case 'prose':
+      return `<p>${boldKeywords(escapeHtml(block.text.trim()))}</p>`;
+    case 'bullet': {
+      const compact = block.items.length >= 4 && block.items.every(i => i.length <= 60) ? ' columns' : '';
+      return `<ul class="instruction-list${compact}">${block.items.map(i => `<li>${boldKeywords(escapeHtml(i))}</li>`).join('')}</ul>`;
+    }
+    case 'definition':
+      return `<dl class="instruction-legend">${block.pairs.map(p => `<div class="legend-row"><dt>${escapeHtml(p.code)}</dt><dd>${boldKeywords(escapeHtml(p.desc))}</dd></div>`).join('')}</dl>`;
+    case 'legend':
+      return `<div class="instruction-diagram">${block.items.map(it => it.left
+        ? `<div class="diagram-pair"><span>${escapeHtml(it.left)}</span><span class="arrow" aria-hidden="true">→</span><span>${escapeHtml(it.right)}</span></div>`
+        : `<div class="diagram-note">${escapeHtml(it.text)}</div>`).join('')}</div>`;
+    case 'example':
+      return `<pre class="instruction-example">${escapeHtml(block.lines.join('\n'))}</pre>`;
+    default:
+      return '';
+  }
+}
+function formatInstructionHtml(kicker, rawLines) {
+  const blocks = groupBlocks(rawLines);
+  const kickerHtml = kicker && kicker.trim() ? `<div class="instruction-kicker">${escapeHtml(kicker.trim())}</div>` : '';
+  return kickerHtml + blocks.map(renderInstructionBlock).join('');
+}
+// -----------------------------------------------------------------------------------
+
+function parseLesson(text) {
+  const screens = new Map();
+  const matcher = /scr\("(\d+)",(\d+),"((?:\\.|[^"\\])*)"\)/g;
+  const terminalTypes = new Set([1, 6, 7, 8, 11, 12, 61, 78, 88]);
+  for (const match of text.matchAll(matcher)) {
+    const key = Number(match[1]);
+    if (!screens.has(key)) screens.set(key, { id: key, title: [], text: [], output: [], hasSegmentDetail: false, answers: [], clear: false, end: false });
+    const screen = screens.get(key), type = Number(match[2]), value = decodeLegacy(match[3]);
+    if (type === 22) screen.title.push(value);
+    else if (terminalTypes.has(type)) {
+      screen.output.push(value);
+      if (type === 6) screen.hasSegmentDetail = true;
+    }
+    else if (type === 2) screen.text.push(value);
+    else if (type === 3 || (type === 4 && !/^Press\s+(?:PgDn\s+)?to proceed\.?$/i.test(value.trim()))) screen.text.push(value);
+    else if (type === 5) screen.answers.push(value);
+    else if (type === 0 && normal(value) === 'CLS') screen.clear = true;
+    else if (type === 9) screen.end = true;
+  }
+  return [...screens.values()].sort((a, b) => a.id - b.id);
+}
+async function loadContents() {
+  const response = await fetch(`${SOURCE}DIR.DSP`);
+  if (!response.ok) throw new Error('No se pudo cargar DIR.DSP');
+  contents = parseDirectory(await response.text());
+}
+// A handful of original .DAT screens ask the student to type a specific full entry in
+// their instruction text, but the accepted-answer field in the same file only records
+// a short fragment of it (a data-entry mistake in the source material). The original,
+// read-only .DAT files are never edited, so those cases are corrected here instead,
+// keyed by mode, lesson number, file part ('' = base, 'B', 'C'…) and the DAT's own
+// internal screen id.
+const ANSWER_FIXES = {
+  'classroom-14--9': ['OSIB 1CHD AGED 9/P3']
+};
+function applyAnswerFix(mode, number, part, screen) {
+  const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
+  if (fix) screen.answers = fix;
+  return screen;
+}
+async function loadLesson(mode, number) {
+  // Some lessons are split by the original DOS engine across several files
+  // (base, B, C, …), each one a self-contained continuation of the previous.
+  const parts = ['', 'B', 'C'];
+  let screens = [];
+  for (const part of parts) {
+    const response = await fetch(`${SOURCE}${sourceFile(mode, number, part)}`);
+    if (!response.ok) {
+      if (part === '') throw new Error(`No se pudo cargar la lección ${number}.`);
+      break;
+    }
+    const parsed = parseLesson(await response.text()).map(screen => applyAnswerFix(mode, number, part, screen));
+    screens = screens.concat(parsed);
+  }
+  return screens;
+}
+function renderNav() {
+  nav.innerHTML = Object.entries(MODES).map(([id, mode]) => `<button data-mode="${id}" class="${activeMode === id ? 'active' : ''}"><span class="mode-icon">${mode.icon}</span>${mode.label}</button>`).join('');
+  nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => showLessons(button.dataset.mode)));
+}
+function showHome() {
+  activeMode = null; activeLesson = null; session = null; renderNav(); crumb.textContent = 'Inicio';
+  app.innerHTML = `<section class="home-hero"><div><div class="eyebrow">Formación GDS</div><h1>Tu terminal de práctica, ahora en cualquier dispositivo.</h1><p class="lead">La misma formación del simulador original, reimaginada como una experiencia clara, guiada y con tu progreso guardado en este dispositivo.</p><div class="hero-pills"><span>✈ 120 lecciones</span><span>◫ Progreso personal</span><span>⌕ Búsqueda de órdenes</span></div></div><img src="modern/assets/travel-training.svg" alt="Avión y ruta de aprendizaje sobre un globo" /></section><section class="mode-grid">${Object.entries(MODES).map(([id, mode]) => `<article class="mode-card mode-${id}"><div class="mode-symbol">${mode.icon}</div><h2>${mode.label}</h2><p>${mode.description}</p><button class="primary-button" data-mode="${id}">Ver las 40 lecciones <span aria-hidden="true">→</span></button></article>`).join('')}</section>`;
+  app.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => showLessons(button.dataset.mode)));
+}
+function showLessons(mode) {
+  activeMode = mode; activeLesson = null; session = null; renderNav();
+  const info = MODES[mode]; crumb.textContent = info.label;
+  app.innerHTML = `<div class="lesson-top"><div><div class="eyebrow">${info.label}</div><h1>${info.label}</h1><p>${info.description}</p></div><button class="secondary-button" id="home-button">← Inicio</button></div><section class="lesson-list">${(() => { const pos = positions(); return contents.map(item => {
+    const theme = lessonTheme(item.number);
+    const done = isDone(mode, item.number);
+    const savedIndex = pos[progressKey(mode, item.number)];
+    const inProgress = !done && savedIndex !== undefined;
+    const status = done ? 'Completada' : inProgress ? `En curso · Paso ${savedIndex + 1}` : mode === 'review' ? 'Examen · 10 preguntas' : 'Práctica guiada';
+    return `<button class="lesson-card theme-${theme.kind} ${done ? 'done' : ''} ${inProgress ? 'in-progress' : ''}" data-lesson="${item.number}"><span class="lesson-number">${done ? '✓' : inProgress ? '●' : item.number}</span><span class="lesson-emblem" aria-hidden="true">${theme.icon}</span><span><small class="lesson-category">${theme.label}</small><strong>${escapeHtml(item.title)}</strong><small class="lesson-status">${status}</small></span></button>`;
+  }); })().join('')}</section>`;
+  document.querySelector('#home-button').addEventListener('click', showHome);
+  app.querySelectorAll('[data-lesson]').forEach(button => button.addEventListener('click', () => startLesson(mode, Number(button.dataset.lesson))));
+}
+async function startLesson(mode, number) {
+  activeMode = mode; activeLesson = number; crumb.textContent = `${MODES[mode].label} · Lección ${number}`;
+  app.innerHTML = '<p class="loading">Preparando la lección…</p>';
+  try {
+    const screens = await loadLesson(mode, number);
+    const resumeIndex = Math.min(savedPosition(mode, number), Math.max(screens.length - 1, 0));
+    session = { mode, number, screens, index: resumeIndex, wrong: [], errorInQuestion: false, justResumed: resumeIndex > 0 };
+    renderScreen();
+  } catch (error) { app.innerHTML = `<p class="notice bad">${escapeHtml(error.message)}</p>`; }
+}
+function currentScreen() { return session.screens[session.index]; }
+function usefulAnswers(screen) { return screen.answers.filter(answer => normalAnswer(answer) !== 'PD'); }
+function terminalForCurrentScreen() {
+  let terminal = [];
+  for (let index = 0; index <= session.index; index += 1) {
+    const screen = session.screens[index];
+    // CLS is executed after the contents of its screen have been read.
+    if (index > 0 && session.screens[index - 1].clear) terminal = [];
+    // A new system response replaces the previous terminal display.
+    if (screen.output.length) {
+      // Type 12 is a layout marker in the legacy player, not the visible header.
+      // The DOS terminal supplies this standard PNR header for compact segment displays.
+      terminal = screen.hasSegmentDetail && !screen.output.some(line => /^RP\//.test(line.trim()))
+        ? ['RP/FRALH0999/', ...screen.output]
+        : screen.output;
+    }
+  }
+  return terminal;
+}
+function renderScreen() {
+  const screen = currentScreen();
+  if (!screen) return finishLesson();
+  savePosition(session.mode, session.number, session.index);
+  const showResumeNotice = Boolean(session.justResumed);
+  session.justResumed = false;
+  const title = contents.find(item => item.number === session.number)?.title || `Lección ${session.number}`;
+  const theme = lessonTheme(session.number);
+  const answers = usefulAnswers(screen);
+  const isPager = screen.answers.some(answer => normalAnswer(answer) === 'PD') && !answers.length;
+  const instructionHtml = formatInstructionHtml(screen.title.join(' '), screen.text);
+  const terminal = terminalForCurrentScreen();
+  const illustration = ILLUSTRATIONS[pickIllustration(screen, theme)];
+  const canGoBack = session.mode === 'classroom' || session.mode === 'agency';
+  const backButton = canGoBack && session.index > 0 ? '<button class="secondary-button" id="back">← Atrás</button>' : '';
+  const continueControls = `<div class="stage-actions">${backButton}<span></span><button class="primary-button" id="continue">Continuar</button></div>`;
+  const answerControls = `<div class="stage-actions">${backButton}<p class="hint">Las mayúsculas y los espacios no afectan a la respuesta.</p><div class="answer-actions"><button class="solution-button" id="solution" title="Ver solución con contraseña">S</button><button class="secondary-button" id="leave">Salir de la lección</button></div></div>`;
+  app.innerHTML = `<article class="lesson-stage"><header class="stage-heading"><div><div class="eyebrow">${MODES[session.mode].label} · Lección ${session.number}</div><h2>${escapeHtml(title)}</h2><p>${session.mode === 'review' ? `Pregunta ${Math.min(session.index + 1, 10)} de 10` : 'Práctica guiada'}</p></div><div class="stage-heading-actions"><span class="step">Paso ${session.index + 1} / ${session.screens.length}</span>${session.index > 0 ? '<button class="text-button" id="restart-lesson" title="Volver al paso 1">↺ Reiniciar lección</button>' : ''}</div></header><div class="lesson-body"><div class="lesson-main">${showResumeNotice ? `<p class="notice good">Retomamos la lección en el paso ${session.index + 1}.</p>` : ''}<pre class="terminal">${escapeHtml(terminal.join('\n'))}</pre><div class="instruction">${instructionHtml}</div>${isPager ? continueControls : answers.length ? `<form id="answer-form"><div class="command-row"><input id="command-input" aria-label="Introduce la orden" placeholder="Introduce la orden…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus /><button class="primary-button">Comprobar</button></div></form><div id="feedback"></div>${answerControls}` : continueControls}</div><div class="step-illustration theme-${theme.kind}" aria-hidden="true">${illustration}</div></div></article>`;
+  const continueButton = document.querySelector('#continue');
+  if (continueButton) continueButton.addEventListener('click', nextScreen);
+  const backButtonElement = document.querySelector('#back');
+  if (backButtonElement) backButtonElement.addEventListener('click', previousScreen);
+  const leave = document.querySelector('#leave');
+  if (leave) leave.addEventListener('click', () => showLessons(session.mode));
+  const restart = document.querySelector('#restart-lesson');
+  if (restart) restart.addEventListener('click', () => {
+    if (!confirm('¿Reiniciar esta lección desde el paso 1?')) return;
+    session.index = 0;
+    session.wrong = [];
+    clearPosition(session.mode, session.number);
+    renderScreen();
+  });
+  const solution = document.querySelector('#solution');
+  if (solution) solution.addEventListener('click', () => showSolution(title, session.number, session.index + 1, answers));
+  const form = document.querySelector('#answer-form');
+  if (form) form.addEventListener('submit', event => { event.preventDefault(); submitAnswer(answers); });
+  const stageTitle = document.querySelector('.stage-heading > div');
+  stageTitle.classList.add('stage-title', 'theme-' + theme.kind);
+  stageTitle.dataset.icon = theme.icon;
+  if (terminal.length) {
+    const label = document.createElement('div');
+    label.className = 'terminal-label';
+    label.textContent = '▣ Respuesta del sistema';
+    document.querySelector('.terminal').before(label);
+  }
+}
+function submitAnswer(answers) {
+  const input = document.querySelector('#command-input');
+  const feedback = document.querySelector('#feedback');
+  if (!normalAnswer(input.value)) return;
+  const correct = answers.some(answer => normalAnswer(answer) === normalAnswer(input.value));
+  if (correct) {
+    feedback.innerHTML = '<div class="notice good">Correcto. Continuamos.</div>';
+    input.disabled = true;
+    setTimeout(nextScreen, 500);
+  } else if (session.mode === 'review') {
+    session.wrong.push({ question: currentScreen().text.map(plainText).join(' '), answer: answers[0] });
+    feedback.innerHTML = `<div class="notice bad">No es correcto. La respuesta esperada era <strong>${escapeHtml(answers[0])}</strong>.</div><div class="stage-actions"><span></span><button class="primary-button" id="next-question">Siguiente pregunta</button></div>`;
+    input.disabled = true;
+    document.querySelector('#next-question').addEventListener('click', nextScreen);
+  } else {
+    feedback.innerHTML = '<div class="notice bad">Aún no es la orden correcta. Revisa la explicación y vuelve a intentarlo.</div>';
+    input.select();
+  }
+}
+function nextScreen() { session.index += 1; renderScreen(); }
+function previousScreen() {
+  if (session.index > 0) { session.index -= 1; renderScreen(); }
+}
+function finishLesson() {
+  clearPosition(session.mode, session.number);
+  const review = session.mode === 'review';
+  const passed = !review || session.wrong.length === 0;
+  const correctAnswers = 10 - session.wrong.length;
+  if (passed) { const data = storage(); data[progressKey(session.mode, session.number)] = true; save(data); }
+  app.innerHTML = `<article class="lesson-stage final"><div class="eyebrow">Lección finalizada</div><span class="result-number">${review ? `${correctAnswers}/10` : '✓'}</span><h2>${review ? (passed ? 'Sin errores' : `${session.wrong.length} respuesta${session.wrong.length === 1 ? '' : 's'} incorrecta${session.wrong.length === 1 ? '' : 's'}`) : 'Práctica completada'}</h2><p class="lead">${passed ? 'Tu progreso ha quedado registrado en este dispositivo.' : 'Para completar una lección Review debes acertar las diez preguntas. Aquí tienes las soluciones que conviene repasar.'}</p>${session.wrong.length ? `<div class="solution-list">${session.wrong.map(item => `<div class="solution"><strong>${escapeHtml(item.question)}</strong><code>${escapeHtml(item.answer)}</code></div>`).join('')}</div>` : ''}<p><button class="primary-button" id="back-lessons">Volver a las lecciones</button></p></article>`;
+  document.querySelector('#back-lessons').addEventListener('click', () => showLessons(session.mode));
+}
+async function buildSearchIndex() {
+  if (searchIndex) return searchIndex;
+  searchResults.innerHTML = '<p class="loading">Preparando las órdenes de tus lecciones completadas…</p>';
+  const entries = [];
+  await Promise.all(Object.keys(MODES).flatMap(mode => contents.map(async item => {
+    if (!isDone(mode, item.number)) return;
+    try {
+      const screens = await loadLesson(mode, item.number);
+      screens.forEach(screen => usefulAnswers(screen).forEach(command => entries.push({ mode, number: item.number, title: item.title, command, context: screen.text.map(plainText).join(' ') })));
+    } catch (_) { /* A missing optional legacy file does not stop the finder. */ }
+  })));
+  searchIndex = entries;
+  return entries;
+}
+async function openSearch() {
+  searchDialog.showModal(); searchInput.value = ''; searchInput.focus(); searchResults.innerHTML = '<p class="loading">Escribe un término para buscar entre las órdenes de tus lecciones completadas.</p>';
+  await buildSearchIndex();
+}
+function renderSearch(query) {
+  if (!query.trim()) { searchResults.innerHTML = '<p class="loading">Busca por ejemplo <strong>DAC</strong>, <strong>hotel</strong> o <strong>Bangkok</strong> en las lecciones superadas.</p>'; return; }
+  const terms = normal(query).split(' ');
+  const matches = searchIndex.filter(item => terms.every(term => normal(`${item.command} ${item.context} ${item.title}`).includes(term))).slice(0, 30);
+  searchResults.innerHTML = matches.length ? matches.map(item => `<button class="search-result" data-mode="${item.mode}" data-lesson="${item.number}"><strong><code>${escapeHtml(item.command)}</code> · ${escapeHtml(item.title)}</strong><span>${escapeHtml(item.context.slice(0, 170))}</span></button>`).join('') : '<p class="loading">No se ha encontrado ninguna orden con esos términos.</p>';
+  searchResults.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { searchDialog.close(); startLesson(button.dataset.mode, Number(button.dataset.lesson)); }));
+}
+document.querySelector('#search-button').addEventListener('click', openSearch);
+document.querySelector('#progress-button').addEventListener('click', openProgress);
+searchInput.addEventListener('input', event => { if (searchIndex) renderSearch(event.target.value); });
+document.querySelector('#menu-button').addEventListener('click', () => document.querySelector('.sidebar').classList.toggle('open'));
+document.querySelector('#reset-progress').addEventListener('click', () => { if (confirm('¿Quieres borrar el progreso guardado en este dispositivo?')) { localStorage.removeItem('gds-training-progress'); localStorage.removeItem('gds-training-position'); updateProgress(); if (activeMode) showLessons(activeMode); else showHome(); } });
+// The service worker used to be disabled on localhost to dodge cache-testing headaches
+// during development; now that installability is the point, it registers everywhere
+// (including localhost, so "Install app" and offline lessons work from Live Server too).
+if ('serviceWorker' in navigator && !location.pathname.includes('/modern/')) navigator.serviceWorker.register('./service-worker.js');
+loadContents().then(() => { updateProgress(); showHome(); }).catch(() => { app.innerHTML = '<p class="notice bad">No se ha podido cargar el índice de lecciones. Comprueba que la carpeta <code>orion/GDS</code> esté disponible junto a esta aplicación.</p>'; });

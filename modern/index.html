@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071a33" />
+    <link rel="manifest" href="../manifest.webmanifest" />
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="GDS Training" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>GDS Training</title>
+    <link rel="stylesheet" href="styles.css?v=27" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand" href="#inicio" aria-label="Ir al inicio">
+          <span class="brand-mark">G</span>
+          <span>GDS<br /><small>Training</small></span>
+        </a>
+        <nav id="mode-nav" class="mode-nav"></nav>
+        <section class="progress-card">
+          <button id="progress-button" class="progress-summary">
+            <p>Tu progreso</p>
+            <strong id="progress-label">0 de 120 lecciones</strong>
+            <div class="progress-track"><span id="progress-bar"></span></div>
+          </button>
+          <button id="reset-progress" class="text-button">Restablecer progreso</button>
+        </section>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <button id="menu-button" class="icon-button" aria-label="Abrir menú">☰</button>
+          <div id="breadcrumb" class="breadcrumb">Inicio</div>
+          <button id="search-button" class="search-button">⌕&nbsp; Buscar una orden</button>
+        </header>
+        <div id="app" class="content" aria-live="polite"></div>
+      </main>
+    </div>
+
+    <dialog id="search-dialog">
+      <form method="dialog" class="dialog-header">
+        <strong>Buscador de órdenes</strong>
+        <button class="icon-button" aria-label="Cerrar">×</button>
+      </form>
+      <p>Busca por orden, código o concepto dentro de los contenidos del curso.</p>
+      <input id="search-input" type="search" placeholder="Ej.: disponibilidad, DAC, Bangkok…" autocomplete="off" />
+      <div id="search-results" class="search-results"></div>
+    </dialog>
+    <dialog id="progress-dialog">
+      <form method="dialog" class="dialog-header">
+        <strong>Resumen de progreso</strong>
+        <button class="icon-button" aria-label="Cerrar">×</button>
+      </form>
+      <div id="progress-details"></div>
+    </dialog>
+
+    <template id="notice-template"><div class="notice" role="status"></div></template>
+    <script src="app.js?v=27"></script>
+  </body>
+</html>
