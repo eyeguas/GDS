@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071a33" />
+    <meta name="description" content="Step-by-step install and update guide for the GDS Training app on iPhone, Android, Windows, Mac, and Linux." />
+    <link rel="icon" href="modern/icons/favicon-32.png" sizes="32x32" />
+    <title>Installing GDS Training</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --navy:#071a33; --blue:#1b63d9; --sky:#eaf2ff; --ink:#142238;
+    --muted:#5c6b84; --line:#dce3ee; --paper:#ffffff; --amber:#b3690b;
+    --amber-bg:#fdf0dd; --good:#087443;
+    --surface:var(--paper); --surface-raised:#ffffff; --text:var(--ink);
+    --text-muted:var(--muted); --hairline:var(--line); --board:var(--navy);
+    --board-text:#eaf2ff; --board-line:#1f3a5f; --accent:var(--blue);
+    --accent-ink:#ffffff; --stub-hole:var(--sky);
+    --shadow: 0 1px 2px rgba(7,26,51,.04), 0 8px 24px rgba(7,26,51,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --surface:#0b1626; --surface-raised:#101f36; --text:#e7edf7;
+      --text-muted:#93a3bd; --hairline:#233a5c; --board:#040d1c;
+      --board-text:#dce9ff; --board-line:#1a2e4d; --sky:#0f2038;
+      --accent:#4f8fef; --accent-ink:#04101f; --stub-hole:#0b1626;
+      --amber:#e8a53d; --amber-bg:#2a2110; --good:#3fbf83;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --surface:#0b1626; --surface-raised:#101f36; --text:#e7edf7;
+    --text-muted:#93a3bd; --hairline:#233a5c; --board:#040d1c;
+    --board-text:#dce9ff; --board-line:#1a2e4d; --sky:#0f2038;
+    --accent:#4f8fef; --accent-ink:#04101f; --stub-hole:#0b1626;
+    --amber:#e8a53d; --amber-bg:#2a2110; --good:#3fbf83;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--surface); color:var(--text);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:"Big Shoulders Display",Inter,sans-serif; text-wrap:balance; letter-spacing:.01em; margin:0; }
+  code, .mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; }
+  a{ color:var(--accent); }
+
+  .wrap{ max-width:880px; margin:0 auto; padding:0 20px 80px; }
+
+  /* ---- Header / departure board ---- */
+  .board{
+    background:var(--board); color:var(--board-text);
+    padding:40px 20px 28px;
+  }
+  .board-inner{ max-width:880px; margin:0 auto; }
+  .board-eyebrow{
+    display:flex; align-items:center; gap:10px; font-family:"IBM Plex Mono",monospace;
+    font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#8fa8d6; margin-bottom:14px;
+  }
+  .board-eyebrow .dot{ width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px rgba(8,116,67,.25); }
+  .board h1{ font-size:clamp(32px,6vw,52px); font-weight:900; line-height:1.02; }
+  .board h1 em{ font-style:normal; color:#7fb0ff; }
+  .board p.lead{ margin-top:14px; max-width:60ch; color:#c3d3ec; font-size:16px; }
+  .board .app-link{
+    display:inline-flex; align-items:center; gap:8px; margin-top:20px; padding:10px 16px;
+    background:rgba(255,255,255,.08); border:1px solid var(--board-line); border-radius:8px;
+    color:var(--board-text); text-decoration:none; font-size:14px; font-family:"IBM Plex Mono",monospace;
+  }
+  .board .app-link:hover{ background:rgba(255,255,255,.14); }
+  .board .app-link svg{ width:14px; height:14px; }
+
+  /* ---- Gate selector (platform tabs) ---- */
+  .gates{
+    display:flex; flex-wrap:wrap; gap:8px; margin:-24px 0 32px;
+    padding:10px; background:var(--surface-raised); border:1px solid var(--hairline);
+    border-radius:12px; box-shadow:var(--shadow);
+  }
+  .gate-btn{
+    flex:1 1 auto; min-width:110px; display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:12px 10px; border-radius:8px; border:1px solid transparent; background:transparent;
+    color:var(--text-muted); cursor:pointer; font-family:Inter,sans-serif; font-weight:600; font-size:13.5px;
+  }
+  .gate-btn .code{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.08em; color:var(--text-muted); }
+  .gate-btn[aria-selected="true"]{ background:var(--sky); border-color:var(--hairline); color:var(--accent); }
+  .gate-btn[aria-selected="true"] .code{ color:var(--accent); }
+  .gate-btn:hover{ background:var(--sky); }
+  .gate-hint{ width:100%; text-align:center; font-size:11.5px; color:var(--text-muted); padding-top:2px; }
+
+  section.panel{ display:none; }
+  section.panel.is-active{ display:block; }
+
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .section-head h2{ font-size:26px; font-weight:800; color:var(--text); }
+  .section-head .via{ font-size:13px; color:var(--text-muted); font-family:"IBM Plex Mono",monospace; }
+
+  /* ---- Ticket stub steps ---- */
+  .stub{
+    position:relative; background:var(--surface-raised); border:1px solid var(--hairline);
+    border-radius:10px; padding:18px 20px 18px 64px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .stub + .stub{ margin-top:-1px; }
+  .stub::before{
+    content:attr(data-n); position:absolute; left:0; top:0; bottom:0; width:46px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:16px; color:var(--accent);
+    background:var(--sky); border-right:2px dashed var(--hairline);
+    border-radius:10px 0 0 10px;
+  }
+  .stub::after{
+    content:""; position:absolute; left:40px; top:-7px; width:14px; height:14px;
+    border-radius:50%; background:var(--stub-hole); border:1px solid var(--hairline);
+  }
+  .stub p{ margin:0; color:var(--text); }
+  .stub p + p{ margin-top:6px; color:var(--text-muted); font-size:14.5px; }
+  .stub .key{
+    display:inline-block; padding:1px 7px; border:1px solid var(--hairline); border-radius:5px;
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; background:var(--sky); color:var(--accent);
+  }
+
+  /* ---- Callouts ---- */
+  .callout{
+    display:flex; gap:12px; padding:16px 18px; border-radius:10px; margin:22px 0;
+    background:var(--amber-bg); border:1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  }
+  .callout .mark{
+    flex:none; width:26px; height:26px; border-radius:50%; background:var(--amber); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-family:"IBM Plex Mono",monospace; font-weight:700; font-size:14px;
+  }
+  .callout strong{ display:block; color:var(--text); margin-bottom:3px; }
+  .callout p{ margin:0; color:var(--text-muted); font-size:14.5px; }
+
+  .tip{
+    display:flex; gap:12px; padding:14px 18px; border-radius:10px; margin:18px 0;
+    background:var(--sky); border:1px solid var(--hairline);
+  }
+  .tip .mark{ flex:none; color:var(--good); font-weight:800; font-family:"IBM Plex Mono",monospace; }
+  .tip p{ margin:0; font-size:14.5px; color:var(--text); }
+
+  /* ---- Update section ---- */
+  .divider{
+    display:flex; align-items:center; gap:14px; margin:56px 0 28px; color:var(--text-muted);
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; letter-spacing:.12em; text-transform:uppercase;
+  }
+  .divider::before,.divider::after{ content:""; flex:1; height:1px; background:var(--hairline); }
+
+  .accordion{ border:1px solid var(--hairline); border-radius:10px; overflow:hidden; background:var(--surface-raised); box-shadow:var(--shadow); margin-bottom:14px; }
+  .accordion summary{
+    list-style:none; cursor:pointer; padding:15px 18px; display:flex; align-items:center; justify-content:space-between;
+    font-weight:700; font-size:15px; color:var(--text);
+  }
+  .accordion summary::-webkit-details-marker{ display:none; }
+  .accordion summary .chev{ font-family:"IBM Plex Mono",monospace; color:var(--text-muted); transition:transform .15s ease; }
+  .accordion[open] summary .chev{ transform:rotate(90deg); }
+  .accordion .body{ padding:0 18px 18px; color:var(--text-muted); font-size:14.5px; }
+  .accordion .body ol{ margin:8px 0 0; padding-left:20px; }
+  .accordion .body li{ margin-bottom:8px; color:var(--text); }
+  .accordion .body li::marker{ font-family:"IBM Plex Mono",monospace; color:var(--accent); }
+
+  footer{ margin-top:60px; padding-top:24px; border-top:1px solid var(--hairline); color:var(--text-muted); font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  footer a{ color:var(--text-muted); }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+
+  @media (max-width:600px){
+    .stub{ padding-left:56px; }
+    .stub::before{ width:40px; font-size:14px; }
+    .stub::after{ left:34px; }
+    .gates{ margin-top:0; }
+    .board{ padding-top:28px; }
+  }
+</style>
+  </head>
+  <body>
+<div class="board">
+  <div class="board-inner">
+    <div class="board-eyebrow"><span class="dot"></span> GDS TRAINING &middot; DEPARTURE INFORMATION</div>
+    <h1>Getting <em>GDS Training</em><br>onto your device</h1>
+    <p class="lead">GDS Training installs like an app straight from your browser — no app store, no download links. Pick your device below, follow the steps, and it'll sit on your home screen or desktop ready to open offline.</p>
+    <a class="app-link" href="https://eyeguas.github.io/GDS/" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      eyeguas.github.io/GDS
+    </a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="gates" role="tablist" aria-label="Choose your device">
+    <button class="gate-btn" role="tab" data-target="ios"><span class="code">GATE 1</span>iPhone / iPad</button>
+    <button class="gate-btn" role="tab" data-target="android"><span class="code">GATE 2</span>Android</button>
+    <button class="gate-btn" role="tab" data-target="windows"><span class="code">GATE 3</span>Windows</button>
+    <button class="gate-btn" role="tab" data-target="mac"><span class="code">GATE 4</span>Mac</button>
+    <button class="gate-btn" role="tab" data-target="linux"><span class="code">GATE 5</span>Linux</button>
+    <div class="gate-hint" id="auto-hint"></div>
+  </div>
+
+  <section class="panel" id="panel-ios">
+    <div class="section-head"><h2>iPhone &amp; iPad</h2><span class="via">via Safari</span></div>
+    <div class="stub" data-n="1"><p>Open Safari and go to <code>eyeguas.github.io/GDS</code>.</p><p>It has to be Safari — Chrome and other browsers on iOS can't add the app to your home screen.</p></div>
+    <div class="stub" data-n="2"><p>Tap the <strong>Share</strong> button — the square with an arrow pointing up, in the bottom toolbar (or the top bar on iPad).</p></div>
+    <div class="stub" data-n="3"><p>Scroll the share menu down and tap <span class="key">Add to Home Screen</span>.</p></div>
+    <div class="stub" data-n="4"><p>Tap <strong>Add</strong> in the top-right corner.</p><p>A "GDS Training" icon appears on your home screen. Open it from there, not from Safari — that's what makes it work offline and feel like a real app.</p></div>
+    <div class="tip"><span class="mark">✓</span><p>Once it's installed, open it over Wi-Fi one time so it can save the lessons for offline use. After that, it works with no signal at all.</p></div>
+  </section>
+
+  <section class="panel" id="panel-android">
+    <div class="section-head"><h2>Android</h2><span class="via">via Chrome</span></div>
+    <div class="stub" data-n="1"><p>Open Chrome and go to <code>eyeguas.github.io/GDS</code>.</p></div>
+    <div class="stub" data-n="2"><p>Chrome usually shows an <span class="key">Install app</span> banner or button at the bottom of the screen. Tap it.</p><p>Don't see it? Tap the <strong>⋮</strong> menu in the top-right corner instead.</p></div>
+    <div class="stub" data-n="3"><p>From that menu, tap <span class="key">Install app</span> (sometimes labelled <span class="key">Add to Home screen</span>).</p></div>
+    <div class="stub" data-n="4"><p>Confirm by tapping <strong>Install</strong>.</p><p>GDS Training now has its own icon in your app drawer and home screen, and opens in its own window without Chrome's address bar.</p></div>
+    <div class="tip"><span class="mark">✓</span><p>Open it once with an internet connection so the lessons are stored on your device — after that it runs fully offline.</p></div>
+  </section>
+
+  <section class="panel" id="panel-windows">
+    <div class="section-head"><h2>Windows</h2><span class="via">via Chrome or Edge</span></div>
+    <div class="stub" data-n="1"><p>Open Chrome or Edge and go to <code>eyeguas.github.io/GDS</code>.</p></div>
+    <div class="stub" data-n="2"><p>Look at the right side of the address bar for a small install icon — a monitor with a down arrow (Chrome) or a similar icon (Edge).</p></div>
+    <div class="stub" data-n="3"><p>Click it, then click <span class="key">Install</span> in the pop-up.</p><p>No icon in the address bar? Open the <strong>⋮</strong> menu and look for <span class="key">Install GDS Training</span> or <span class="key">Apps → Install this site as an app</span>.</p></div>
+    <div class="stub" data-n="4"><p>GDS Training opens in its own window and gets shortcuts on your Desktop and Start menu, just like any other installed program.</p></div>
+    <div class="tip"><span class="mark">✓</span><p>Pin it to your taskbar for one-click access: right-click the app's icon while it's open and choose <strong>Pin to taskbar</strong>.</p></div>
+  </section>
+
+  <section class="panel" id="panel-mac">
+    <div class="section-head"><h2>Mac</h2><span class="via">via Chrome, Edge or Safari</span></div>
+    <div class="stub" data-n="1"><p>Open your browser and go to <code>eyeguas.github.io/GDS</code>.</p></div>
+    <div class="stub" data-n="2"><p><strong>Chrome or Edge:</strong> click the install icon at the right of the address bar, then click <span class="key">Install</span>.</p><p><strong>Safari (macOS Sonoma or newer):</strong> open the <strong>File</strong> menu and choose <span class="key">Add to Dock…</span>.</p></div>
+    <div class="stub" data-n="3"><p>Confirm the name and click <strong>Add</strong> (Safari) or <strong>Install</strong> (Chrome/Edge).</p></div>
+    <div class="stub" data-n="4"><p>GDS Training now opens as its own app from the Dock or Launchpad, in its own window.</p></div>
+    <div class="tip"><span class="mark">✓</span><p>Older macOS on Safari doesn't support "Add to Dock" — use Chrome or Edge instead, both install the same way as on Windows.</p></div>
+  </section>
+
+  <section class="panel" id="panel-linux">
+    <div class="section-head"><h2>Linux</h2><span class="via">via Chrome or Edge</span></div>
+    <div class="stub" data-n="1"><p>Open Chrome or Edge (or another Chromium-based browser) and go to <code>eyeguas.github.io/GDS</code>.</p></div>
+    <div class="stub" data-n="2"><p>Click the install icon on the right of the address bar. If you don't see one, open the <strong>⋮</strong> menu and choose <span class="key">Install GDS Training…</span>.</p></div>
+    <div class="stub" data-n="3"><p>Click <strong>Install</strong> in the confirmation dialog.</p></div>
+    <div class="stub" data-n="4"><p>GDS Training is added to your applications menu and opens in its own window, no browser tabs or address bar.</p></div>
+    <div class="tip"><span class="mark">✓</span><p>Firefox on Linux doesn't support installing this kind of app — use Chrome or Edge for the installed, offline-ready version.</p></div>
+  </section>
+
+  <div class="divider">Keeping it up to date</div>
+
+  <p style="color:var(--text-muted); margin-bottom:20px;">GDS Training checks for new lessons and fixes automatically every time you open it with an internet connection, and downloads the update quietly in the background — no button to press, no store to check.</p>
+
+  <div class="stub" data-n="↻"><p>Fully close the app and reopen it once or twice.</p><p>A background update needs the app to restart before it takes over — on desktop, close the window entirely (not just switch away); on phone, swipe it away from your recent apps, then reopen.</p></div>
+
+  <details class="accordion">
+    <summary>iPhone / iPad still showing the old version? <span class="chev">›</span></summary>
+    <div class="body">
+      <p>Rarely, an iPhone or iPad keeps an older copy cached even after reopening a few times. If that happens:</p>
+      <ol>
+        <li>Open <strong>Settings → Safari → Advanced → Website Data</strong>.</li>
+        <li>Find <code>eyeguas.github.io</code> in the list and swipe to delete it.</li>
+        <li>Go back to your home screen, press and hold the GDS Training icon, and choose <strong>Delete App</strong>.</li>
+        <li>Open Safari, go to <code>eyeguas.github.io/GDS</code> again, and re-add it with <span class="key">Add to Home Screen</span> as before.</li>
+      </ol>
+    </div>
+  </details>
+
+  <div class="callout">
+    <span class="mark">!</span>
+    <div><strong>Before clearing website data, know this:</strong><p>It erases everything the app has saved on that device — your completed lessons, your language choice, and your saved student profile. Only use this fix if reopening the app normally hasn't picked up the update, and expect to redo your profile screen and progress afterward.</p></div>
+  </div>
+
+  <footer>
+    <span>GDS Training &middot; installation &amp; update guide</span>
+    <a href="https://eyeguas.github.io/GDS/" target="_blank" rel="noopener">Open the app →</a>
+  </footer>
+</div>
+
+<script>
+  (function(){
+    const panels = document.querySelectorAll('.panel');
+    const tabs = document.querySelectorAll('.gate-btn');
+    function activate(id){
+      panels.forEach(p => p.classList.toggle('is-active', p.id === 'panel-' + id));
+      tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.target === id ? 'true' : 'false'));
+      try { sessionStorage.setItem('gds-install-tab', id); } catch(_) {}
+    }
+    tabs.forEach(t => t.addEventListener('click', () => activate(t.dataset.target)));
+
+    let initial = 'windows';
+    const ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/.test(ua)) initial = 'ios';
+    else if (/Android/.test(ua)) initial = 'android';
+    else if (/Macintosh|Mac OS X/.test(ua)) initial = 'mac';
+    else if (/Linux/.test(ua) && !/Android/.test(ua)) initial = 'linux';
+
+    let saved = null;
+    try { saved = sessionStorage.getItem('gds-install-tab'); } catch(_) {}
+    const hint = document.getElementById('auto-hint');
+    if (!saved && hint) hint.textContent = 'Detected your device — switch gates any time.';
+    activate(saved || initial);
+  })();
+</script>
+  </body>
+</html>
