@@ -156,7 +156,15 @@ dialog input { width: 100%; padding: 13px; border: 1px solid var(--line); border
 .progress-detail strong, .progress-detail small { display: block; }
 .progress-detail small { margin-top: 3px; color: var(--muted); }
 .progress-detail > span:last-child { color: var(--blue); font-size: 14px; font-weight: 750; }
+.report-action { margin-top: 18px; text-align: right; }
 .loading { color: var(--muted); padding: 40px 0; }
+.profile-gate { display: flex; justify-content: center; padding: clamp(20px, 5vw, 50px) 0; }
+.profile-card { max-width: 480px; width: 100%; padding: 34px 32px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 5px 22px rgba(31, 55, 88, .05); }
+.profile-form { margin-top: 22px; display: grid; gap: 16px; }
+.profile-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 650; color: #37506e; }
+.profile-form input { padding: 11px 13px; border: 1px solid #aab9cc; border-radius: 8px; font: inherit; font-weight: 400; color: var(--ink); }
+.profile-form input:focus { outline: 3px solid #cce1ff; border-color: var(--blue); }
+.profile-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px; }
 .sidebar-close { display: none; }
 .sidebar-backdrop { display: none; }
 @media (max-width: 760px) {

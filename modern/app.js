@@ -176,7 +176,32 @@ const STRINGS = {
   'solution.prompt': { es: 'Introduce la contraseña de la solución.', en: 'Enter the solution password.' },
   'solution.wrongPassword': { es: 'Contraseña incorrecta.', en: 'Incorrect password.' },
   'solution.reveal': { es: 'Solución: {answer}', en: 'Solution: {answer}' },
-  'error.loadIndex': { es: 'No se ha podido cargar el índice de lecciones. Comprueba que la carpeta <code>orion/GDS</code> esté disponible junto a esta aplicación.', en: 'The lesson index could not be loaded. Make sure the <code>orion/GDS</code> folder is available next to this application.' }
+  'error.loadIndex': { es: 'No se ha podido cargar el índice de lecciones. Comprueba que la carpeta <code>orion/GDS</code> esté disponible junto a esta aplicación.', en: 'The lesson index could not be loaded. Make sure the <code>orion/GDS</code> folder is available next to this application.' },
+  'common.cancel': { es: 'Cancelar', en: 'Cancel' },
+  'profile.gateTitle': { es: 'Antes de empezar', en: 'Before you start' },
+  'profile.gateIntro': { es: 'Introduce tus datos para continuar. Se guardan únicamente en este dispositivo (no se envían a ningún servidor) y se usarán para identificarte en tu informe de progreso. No podrás modificarlos después, salvo si restableces tu progreso.', en: 'Enter your details to continue. They are saved only on this device (nothing is sent to any server) and are used to identify you in your progress report. You won’t be able to change them afterwards, unless you reset your progress.' },
+  'profile.updateTitle': { es: 'Actualizar tus datos', en: 'Update your details' },
+  'profile.firstName': { es: 'Nombre', en: 'First name' },
+  'profile.lastName': { es: 'Apellidos', en: 'Last name(s)' },
+  'profile.idNumber': { es: 'DNI / Pasaporte', en: 'National ID / Passport' },
+  'profile.email': { es: 'Email oficial de la universidad', en: 'Official university email' },
+  'profile.save': { es: 'Guardar y continuar', en: 'Save and continue' },
+  'profile.update': { es: 'Guardar cambios', en: 'Save changes' },
+  'profile.resetAsk': { es: '¿Quieres actualizar tus datos personales antes de continuar?', en: 'Do you want to update your personal details before continuing?' },
+  'profile.errorRequired': { es: 'Completa todos los campos.', en: 'Fill in all fields.' },
+  'profile.errorEmail': { es: 'Introduce un email válido.', en: 'Enter a valid email address.' },
+  'profile.errorId': { es: 'Introduce un documento de identificación válido.', en: 'Enter a valid ID document.' },
+  'report.button': { es: 'Ver informe', en: 'View report' },
+  'report.title': { es: 'Informe de progreso', en: 'Progress report' },
+  'report.generatedOn': { es: 'Generado el {date}', en: 'Generated on {date}' },
+  'report.student': { es: 'Estudiante', en: 'Student' },
+  'report.idLabel': { es: 'Identificación', en: 'ID' },
+  'report.emailLabel': { es: 'Email', en: 'Email' },
+  'report.modeCompleted': { es: '{completed} de 40 lecciones completadas', en: '{completed} of 40 lessons completed' },
+  'report.noneCompleted': { es: 'Sin lecciones completadas en este modo.', en: 'No lessons completed in this mode.' },
+  'report.print': { es: 'Imprimir / Guardar como PDF', en: 'Print / Save as PDF' },
+  'report.download': { es: 'Descargar (.html)', en: 'Download (.html)' },
+  'report.noProfile': { es: 'Sin datos personales registrados.', en: 'No personal details on record.' }
 };
 const LANG_KEY = 'gds-training-lang';
 function getLang() { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'es'; }
@@ -213,8 +238,9 @@ function refreshOpenDialogs() {
   if (searchDialog.open) { if (searchIndex) renderSearch(searchInput.value); else searchResults.innerHTML = `<p class="loading">${t('search.preparing')}</p>`; }
 }
 function refreshCurrentView() {
-  renderNav();
   updateProgress();
+  if (gateActive) { renderGate(gateOptions); return; }
+  renderNav();
   if (session) renderScreen();
   else if (activeMode) showLessons(activeMode);
   else showHome();
@@ -269,7 +295,9 @@ function renderProgressDetails() {
     const completed = completedIn(id);
     const status = completed === 40 ? t('progress.modeComplete') : plural('progress.pending', 40 - completed);
     return `<div class="progress-detail"><span class="symbol">${mode.icon}</span><span><strong>${mode.label}</strong><small>${status}</small></span><span>${completed} / 40</span></div>`;
-  }).join('')}`;
+  }).join('')}<div class="report-action"><button class="primary-button" id="open-report" type="button">${t('report.button')}</button></div>`;
+  const reportButton = document.querySelector('#open-report');
+  if (reportButton) reportButton.addEventListener('click', openReport);
 }
 function openProgress() {
   renderProgressDetails();
@@ -296,6 +324,101 @@ function showSolution(title, lessonNumber, pageNumber, answers) {
     return;
   }
   alert(t('solution.reveal', { answer: answers[0] }));
+}
+
+// --- Student profile gate ------------------------------------------------------------
+// A one-time, locked identity capture: name, ID document, and university email. It is
+// asked once, before the very first lesson (nothing to complete yet, nothing saved yet),
+// stored locally only, and afterwards shown read-only in the progress report — the only
+// way to change it again is to reset progress, which explicitly offers to update it.
+const PROFILE_KEY = 'gds-training-profile';
+function getProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)); } catch (_) { return null; }
+}
+function hasProfile() { return Boolean(getProfile()); }
+function saveProfile(profile) { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
+function shouldGateForProfile() { return !hasProfile() && Object.keys(storage()).length === 0; }
+function validateProfile(formData) {
+  const firstName = String(formData.get('firstName') || '').trim();
+  const lastName = String(formData.get('lastName') || '').trim();
+  const idNumber = String(formData.get('idNumber') || '').trim();
+  const email = String(formData.get('email') || '').trim();
+  if (!firstName || !lastName || !idNumber || !email) return { error: t('profile.errorRequired') };
+  if (idNumber.replace(/\s+/g, '').length < 5) return { error: t('profile.errorId') };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: t('profile.errorEmail') };
+  return { profile: { firstName, lastName, idNumber, email, savedAt: new Date().toISOString() } };
+}
+let gateActive = false;
+let gateOptions = null;
+// Renders the mandatory (or, after a progress reset, optional) profile form in place of
+// the normal screen. `onDone` runs after a successful save (or Cancel, update-mode only)
+// and defaults to showHome — reset-progress passes its own so the user lands back where
+// resetting makes sense rather than always at the home screen.
+function renderGate(options) {
+  gateOptions = options || {};
+  const prefill = gateOptions.prefill || {};
+  const isUpdate = Boolean(gateOptions.isUpdate);
+  const onDone = gateOptions.onDone || showHome;
+  gateActive = true;
+  nav.innerHTML = '';
+  const heading = isUpdate ? t('profile.updateTitle') : t('profile.gateTitle');
+  crumb.textContent = heading;
+  app.innerHTML = `<section class="profile-gate"><div class="profile-card"><div class="eyebrow">${t('home.eyebrow')}</div><h1>${heading}</h1><p class="lead">${t('profile.gateIntro')}</p><form id="profile-form" class="profile-form" novalidate>
+    <label>${t('profile.firstName')}<input name="firstName" required autocomplete="given-name" value="${escapeHtml(prefill.firstName || '')}" /></label>
+    <label>${t('profile.lastName')}<input name="lastName" required autocomplete="family-name" value="${escapeHtml(prefill.lastName || '')}" /></label>
+    <label>${t('profile.idNumber')}<input name="idNumber" required autocomplete="off" value="${escapeHtml(prefill.idNumber || '')}" /></label>
+    <label>${t('profile.email')}<input name="email" type="email" required autocomplete="email" value="${escapeHtml(prefill.email || '')}" /></label>
+    <div id="profile-error" class="notice bad" hidden></div>
+    <div class="profile-actions">${isUpdate ? `<button type="button" class="secondary-button" id="profile-cancel">${t('common.cancel')}</button>` : '<span></span>'}<button class="primary-button" type="submit">${isUpdate ? t('profile.update') : t('profile.save')}</button></div>
+  </form></div></section>`;
+  document.querySelector('#profile-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const result = validateProfile(new FormData(event.target));
+    const errorBox = document.querySelector('#profile-error');
+    if (result.error) { errorBox.textContent = result.error; errorBox.hidden = false; return; }
+    saveProfile(result.profile);
+    gateActive = false;
+    renderNav();
+    onDone();
+  });
+  const cancelButton = document.querySelector('#profile-cancel');
+  if (cancelButton) cancelButton.addEventListener('click', () => { gateActive = false; renderNav(); onDone(); });
+}
+
+// --- Progress report -----------------------------------------------------------------
+// A self-contained HTML document (own inline styles, no dependency on the app's own
+// assets) so it can be opened as a standalone tab, viewed, printed to PDF, or downloaded
+// as a plain .html file — all from the report page itself.
+const REPORT_CSS = ':root{color-scheme:light;--navy:#071a33;--blue:#1b63d9;--ink:#142238;--muted:#65738a;--line:#dce3ee;}*{box-sizing:border-box;}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#f4f7fb;}.report-toolbar{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:10px;justify-content:flex-end;}.report-toolbar button{padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#29415f;font:inherit;font-size:14px;cursor:pointer;}.report-toolbar button:hover{border-color:#8db5f5;}.report-page{max-width:760px;margin:0 auto;padding:40px 28px 60px;}.report-header h1{margin:0 0 6px;font-size:28px;letter-spacing:-.02em;color:var(--navy);}.report-meta{margin:0 0 28px;color:var(--muted);font-size:13px;}.report-student{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0 0 32px;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:#fff;}.report-student dt{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}.report-student dd{margin:0;font-weight:650;}.report-mode{margin:0 0 26px;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:#fff;}.report-mode h2{margin:0 0 4px;font-size:17px;}.report-count{margin:0 0 12px;color:var(--blue);font-size:13px;font-weight:650;}.report-list{margin:0;padding-left:20px;display:grid;gap:6px;font-size:14px;}.report-empty{margin:0;color:var(--muted);font-size:14px;}@media print{.report-toolbar{display:none;}body{background:#fff;}.report-mode,.report-student{border:none;box-shadow:none;}}';
+function buildReportHtml() {
+  const profile = getProfile();
+  const dateStr = new Date().toLocaleString(lang === 'en' ? 'en-GB' : 'es-ES');
+  const studentBlock = profile
+    ? `<dl class="report-student"><div><dt>${t('report.student')}</dt><dd>${escapeHtml(profile.firstName)} ${escapeHtml(profile.lastName)}</dd></div><div><dt>${t('report.idLabel')}</dt><dd>${escapeHtml(profile.idNumber)}</dd></div><div><dt>${t('report.emailLabel')}</dt><dd>${escapeHtml(profile.email)}</dd></div></dl>`
+    : `<p class="report-empty">${t('report.noProfile')}</p>`;
+  const sections = Object.entries(MODES).map(([id, mode]) => {
+    const done = contents.filter(item => isDone(id, item.number));
+    const rows = done.length
+      ? `<ol class="report-list">${done.map(item => `<li>${t('lesson.crumb', { number: item.number })} — ${escapeHtml(item.title)}</li>`).join('')}</ol>`
+      : `<p class="report-empty">${t('report.noneCompleted')}</p>`;
+    return `<section class="report-mode"><h2>${mode.label}</h2><p class="report-count">${t('report.modeCompleted', { completed: done.length })}</p>${rows}</section>`;
+  }).join('');
+  const printLabel = escapeHtml(t('report.print'));
+  const downloadLabel = escapeHtml(t('report.download'));
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${escapeHtml(t('report.title'))}</title><style>${REPORT_CSS}</style></head><body>
+<div class="report-toolbar"><button type="button" onclick="window.print()">${printLabel}</button><button type="button" id="download-html">${downloadLabel}</button></div>
+<main class="report-page">
+<div class="report-header"><h1>${t('report.title')}</h1><p class="report-meta">${t('report.generatedOn', { date: dateStr })}</p></div>
+${studentBlock}
+${sections}
+</main>
+<script>document.querySelector('#download-html').addEventListener('click', () => { const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'informe-progreso.html'; a.click(); });<\/script>
+</body></html>`;
+}
+function openReport() {
+  const url = URL.createObjectURL(new Blob([buildReportHtml()], { type: 'text/html' }));
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 function parseDirectory(text) {
@@ -652,7 +775,19 @@ document.querySelector('#menu-button').addEventListener('click', openSidebar);
 document.querySelector('#close-sidebar').addEventListener('click', closeSidebar);
 sidebarBackdrop.addEventListener('click', closeSidebar);
 document.querySelector('#progress-button').addEventListener('click', () => { closeSidebar(); });
-document.querySelector('#reset-progress').addEventListener('click', () => { if (confirm(t('progress.resetConfirm'))) { localStorage.removeItem('gds-training-progress'); localStorage.removeItem('gds-training-position'); updateProgress(); if (activeMode) showLessons(activeMode); else showHome(); } });
+document.querySelector('#reset-progress').addEventListener('click', () => {
+  if (!confirm(t('progress.resetConfirm'))) return;
+  localStorage.removeItem('gds-training-progress');
+  localStorage.removeItem('gds-training-position');
+  updateProgress();
+  const modeToReturnTo = activeMode;
+  const landBack = () => { if (modeToReturnTo) showLessons(modeToReturnTo); else showHome(); };
+  if (hasProfile() && confirm(t('profile.resetAsk'))) {
+    renderGate({ prefill: getProfile(), isUpdate: true, onDone: landBack });
+  } else {
+    landBack();
+  }
+});
 document.querySelectorAll('.lang-option').forEach(button => button.addEventListener('click', () => setLang(button.dataset.lang)));
 applyStaticI18n();
 renderLangSwitch();
@@ -660,4 +795,4 @@ renderLangSwitch();
 // during development; now that installability is the point, it registers everywhere
 // (including localhost, so "Install app" and offline lessons work from Live Server too).
 if ('serviceWorker' in navigator && !location.pathname.includes('/modern/')) navigator.serviceWorker.register('./service-worker.js');
-loadContents().then(() => { updateProgress(); showHome(); }).catch(() => { app.innerHTML = `<p class="notice bad">${t('error.loadIndex')}</p>`; });
+loadContents().then(() => { updateProgress(); if (shouldGateForProfile()) renderGate(); else showHome(); }).catch(() => { app.innerHTML = `<p class="notice bad">${t('error.loadIndex')}</p>`; });
