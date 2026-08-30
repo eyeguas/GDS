@@ -12,33 +12,37 @@
     <meta name="apple-mobile-web-app-title" content="GDS Training" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>GDS Training</title>
-    <link rel="stylesheet" href="styles.css?v=28" />
+    <link rel="stylesheet" href="styles.css?v=29" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Navegación principal">
-        <button id="close-sidebar" class="icon-button sidebar-close" aria-label="Cerrar menú">×</button>
-        <a class="brand" href="#inicio" aria-label="Ir al inicio">
+      <aside class="sidebar" data-i18n-attr="aria-label:sidebar.nav" aria-label="Navegación principal">
+        <button id="close-sidebar" class="icon-button sidebar-close" data-i18n-attr="aria-label:sidebar.close" aria-label="Cerrar menú">×</button>
+        <a class="brand" href="#inicio" data-i18n-attr="aria-label:brand.home" aria-label="Ir al inicio">
           <span class="brand-mark">G</span>
           <span>GDS<br /><small>Training</small></span>
         </a>
+        <div class="lang-switch" role="group" data-i18n-attr="aria-label:lang.switchLabel" aria-label="Idioma">
+          <button type="button" class="lang-option" data-lang="es">ES</button>
+          <button type="button" class="lang-option" data-lang="en">EN</button>
+        </div>
         <nav id="mode-nav" class="mode-nav"></nav>
         <section class="progress-card">
           <button id="progress-button" class="progress-summary">
-            <p>Tu progreso</p>
+            <p data-i18n="progress.title">Tu progreso</p>
             <strong id="progress-label">0 de 120 lecciones</strong>
             <div class="progress-track"><span id="progress-bar"></span></div>
           </button>
-          <button id="reset-progress" class="text-button">Restablecer progreso</button>
+          <button id="reset-progress" class="text-button" data-i18n="progress.reset">Restablecer progreso</button>
         </section>
       </aside>
       <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
 
       <main>
         <header class="topbar">
-          <button id="menu-button" class="icon-button" aria-label="Abrir menú">☰</button>
-          <div id="breadcrumb" class="breadcrumb">Inicio</div>
-          <button id="search-button" class="search-button">⌕&nbsp; Buscar una orden</button>
+          <button id="menu-button" class="icon-button" data-i18n-attr="aria-label:sidebar.open" aria-label="Abrir menú">☰</button>
+          <div id="breadcrumb" class="breadcrumb" data-i18n="nav.home">Inicio</div>
+          <button id="search-button" class="search-button"><span aria-hidden="true">⌕</span>&nbsp;<span data-i18n="search.open">Buscar una orden</span></button>
         </header>
         <div id="app" class="content" aria-live="polite"></div>
       </main>
@@ -46,22 +50,22 @@
 
     <dialog id="search-dialog">
       <form method="dialog" class="dialog-header">
-        <strong>Buscador de órdenes</strong>
-        <button class="icon-button" aria-label="Cerrar">×</button>
+        <strong data-i18n="search.title">Buscador de órdenes</strong>
+        <button class="icon-button" data-i18n-attr="aria-label:common.close" aria-label="Cerrar">×</button>
       </form>
-      <p>Busca por orden, código o concepto dentro de los contenidos del curso.</p>
-      <input id="search-input" type="search" placeholder="Ej.: disponibilidad, DAC, Bangkok…" autocomplete="off" />
+      <p data-i18n="search.description">Busca por orden, código o concepto dentro de los contenidos del curso.</p>
+      <input id="search-input" type="search" data-i18n-attr="placeholder:search.placeholder" placeholder="Ej.: disponibilidad, DAC, Bangkok…" autocomplete="off" />
       <div id="search-results" class="search-results"></div>
     </dialog>
     <dialog id="progress-dialog">
       <form method="dialog" class="dialog-header">
-        <strong>Resumen de progreso</strong>
-        <button class="icon-button" aria-label="Cerrar">×</button>
+        <strong data-i18n="progress.dialogTitle">Resumen de progreso</strong>
+        <button class="icon-button" data-i18n-attr="aria-label:common.close" aria-label="Cerrar">×</button>
       </form>
       <div id="progress-details"></div>
     </dialog>
 
     <template id="notice-template"><div class="notice" role="status"></div></template>
-    <script src="app.js?v=28"></script>
+    <script src="app.js?v=29"></script>
   </body>
 </html>

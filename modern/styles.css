@@ -21,6 +21,10 @@ button { cursor: pointer; }
 .brand { color: #fff; text-decoration: none; font-size: 19px; line-height: 1.05; display: flex; align-items: center; gap: 11px; padding: 0 8px; }
 .brand small { font-size: 13px; color: #a8c6fa; letter-spacing: .05em; }
 .brand-mark { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 12px; background: #fff; color: var(--blue); font-weight: 800; font-size: 23px; }
+.lang-switch { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: #0d294b; }
+.lang-option { flex: 1; padding: 7px 0; border: 0; border-radius: 999px; background: transparent; color: #a8c6fa; font-size: 12px; font-weight: 750; letter-spacing: .04em; }
+.lang-option:hover { color: #fff; }
+.lang-option.active { background: var(--blue); color: #fff; }
 .mode-nav { display: grid; gap: 7px; }
 .mode-nav button { border: 0; color: #cad7eb; text-align: left; padding: 12px 13px; border-radius: 8px; background: transparent; }
 .mode-nav button:hover, .mode-nav button.active { background: #14345e; color: #fff; }

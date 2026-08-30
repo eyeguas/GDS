@@ -1,8 +1,8 @@
 /* Modern reader for the original GDS lesson files. No lesson text is duplicated here. */
 const MODES = {
-  classroom: { label: 'Classroom', icon: '◫', prefix: 'LSN', description: 'Aprende cada operación paso a paso, con explicación y práctica guiada.' },
-  agency: { label: 'Agency', icon: '⌘', prefix: 'AM', description: 'Practica situaciones de agencia en un terminal guiado.' },
-  review: { label: 'Review', icon: '✓', prefix: 'Q', description: 'Pon a prueba tus conocimientos con 10 preguntas por lección.' }
+  classroom: { label: 'Classroom', icon: '◫', prefix: 'LSN' },
+  agency: { label: 'Agency', icon: '⌘', prefix: 'AM' },
+  review: { label: 'Review', icon: '✓', prefix: 'Q' }
 };
 const LESSON_THEMES = [
   [1, 4, '✈', 'Availability', 'availability'],
@@ -88,13 +88,154 @@ let activeLesson = null;
 let searchIndex = null;
 let session = null;
 
+// --- Interface translation (Spanish / English) --------------------------------------
+// The app's chrome (navigation, buttons, messages) is bilingual; the lesson content
+// itself (titles, instructions, terminal output, accepted answers — everything that
+// comes from decodeLegacy()/the original .DAT files) is intentionally left in English
+// always, since it is real GDS command syntax, not interface text.
+const STRINGS = {
+  'lang.switchLabel': { es: 'Idioma', en: 'Language' },
+  'sidebar.nav': { es: 'Navegación principal', en: 'Main navigation' },
+  'sidebar.open': { es: 'Abrir menú', en: 'Open menu' },
+  'sidebar.close': { es: 'Cerrar menú', en: 'Close menu' },
+  'brand.home': { es: 'Ir al inicio', en: 'Go to home' },
+  'nav.home': { es: 'Inicio', en: 'Home' },
+  'progress.title': { es: 'Tu progreso', en: 'Your progress' },
+  'progress.count': { es: '{count} de 120 lecciones', en: '{count} of 120 lessons' },
+  'progress.reset': { es: 'Restablecer progreso', en: 'Reset progress' },
+  'progress.resetConfirm': { es: '¿Quieres borrar el progreso guardado en este dispositivo?', en: 'Do you want to erase the progress saved on this device?' },
+  'progress.dialogTitle': { es: 'Resumen de progreso', en: 'Progress summary' },
+  'progress.intro': { es: 'Consulta tus lecciones superadas en este dispositivo.', en: 'Check the lessons you have passed on this device.' },
+  'progress.modeComplete': { es: 'Modo completado', en: 'Mode completed' },
+  'progress.pending': { es: '{count} lección pendiente|{count} lecciones pendientes', en: '{count} lesson left|{count} lessons left' },
+  'search.open': { es: 'Buscar una orden', en: 'Search a command' },
+  'search.title': { es: 'Buscador de órdenes', en: 'Command finder' },
+  'search.description': { es: 'Busca por orden, código o concepto dentro de los contenidos del curso.', en: 'Search by command, code, or concept across the course content.' },
+  'search.placeholder': { es: 'Ej.: disponibilidad, DAC, Bangkok…', en: 'E.g.: availability, DAC, Bangkok…' },
+  'search.preparing': { es: 'Preparando las órdenes de tus lecciones completadas…', en: 'Preparing the commands from your completed lessons…' },
+  'search.hint': { es: 'Escribe un término para buscar entre las órdenes de tus lecciones completadas.', en: 'Type a term to search the commands from your completed lessons.' },
+  'search.empty': { es: 'Busca por ejemplo <strong>DAC</strong>, <strong>hotel</strong> o <strong>Bangkok</strong> en las lecciones superadas.', en: 'Search for example <strong>DAC</strong>, <strong>hotel</strong>, or <strong>Bangkok</strong> in your passed lessons.' },
+  'search.noResults': { es: 'No se ha encontrado ninguna orden con esos términos.', en: 'No command was found matching those terms.' },
+  'common.close': { es: 'Cerrar', en: 'Close' },
+  'home.eyebrow': { es: 'Formación GDS', en: 'GDS Training' },
+  'home.title': { es: 'Tu terminal de práctica, ahora en cualquier dispositivo.', en: 'Your practice terminal, now on every device.' },
+  'home.lead': { es: 'La misma formación del simulador original, reimaginada como una experiencia clara, guiada y con tu progreso guardado en este dispositivo.', en: 'The same training as the original simulator, reimagined as a clear, guided experience that keeps your progress saved on this device.' },
+  'home.pillLessons': { es: '✈ 120 lecciones', en: '✈ 120 lessons' },
+  'home.pillProgress': { es: '◫ Progreso personal', en: '◫ Personal progress' },
+  'home.pillSearch': { es: '⌕ Búsqueda de órdenes', en: '⌕ Command search' },
+  'home.imageAlt': { es: 'Avión y ruta de aprendizaje sobre un globo', en: 'A plane and a learning route over a globe' },
+  'home.viewLessons': { es: 'Ver las 40 lecciones', en: 'View the 40 lessons' },
+  'mode.classroom.desc': { es: 'Aprende cada operación paso a paso, con explicación y práctica guiada.', en: 'Learn every operation step by step, with explanation and guided practice.' },
+  'mode.agency.desc': { es: 'Practica situaciones de agencia en un terminal guiado.', en: 'Practice agency scenarios in a guided terminal.' },
+  'mode.review.desc': { es: 'Pon a prueba tus conocimientos con 10 preguntas por lección.', en: 'Test your knowledge with 10 questions per lesson.' },
+  'theme.availability': { es: 'Disponibilidad', en: 'Availability' },
+  'theme.selling': { es: 'Venta', en: 'Selling' },
+  'theme.pnr': { es: 'PNR', en: 'PNR' },
+  'theme.optional': { es: 'Elementos opcionales', en: 'Optional elements' },
+  'theme.pnr-operations': { es: 'Operaciones de PNR', en: 'PNR operations' },
+  'theme.fares': { es: 'Tarifas', en: 'Fares' },
+  'theme.pricing': { es: 'Tarificación', en: 'Pricing' },
+  'theme.utils': { es: 'Utilidades', en: 'Utils' },
+  'theme.hotel': { es: 'Hoteles', en: 'Hotels' },
+  'theme.cars': { es: 'Coches y varios', en: 'Cars and miscellaneous' },
+  'lessons.back': { es: '← Inicio', en: '← Home' },
+  'lessons.status.done': { es: 'Completada', en: 'Completed' },
+  'lessons.status.inProgress': { es: 'En curso · Paso {step}', en: 'In progress · Step {step}' },
+  'lessons.status.review': { es: 'Examen · 10 preguntas', en: 'Test · 10 questions' },
+  'lessons.status.practice': { es: 'Práctica guiada', en: 'Guided practice' },
+  'lesson.preparing': { es: 'Preparando la lección…', en: 'Preparing the lesson…' },
+  'lesson.loadError': { es: 'No se pudo cargar la lección {number}.', en: 'Could not load lesson {number}.' },
+  'lesson.fallbackTitle': { es: 'Lección {number}', en: 'Lesson {number}' },
+  'lesson.crumb': { es: 'Lección {number}', en: 'Lesson {number}' },
+  'lesson.question': { es: 'Pregunta {current} de 10', en: 'Question {current} of 10' },
+  'lesson.step': { es: 'Paso {current} / {total}', en: 'Step {current} / {total}' },
+  'lesson.restart': { es: '↺ Reiniciar lección', en: '↺ Restart lesson' },
+  'lesson.restartTitle': { es: 'Volver al paso 1', en: 'Go back to step 1' },
+  'lesson.restartConfirm': { es: '¿Reiniciar esta lección desde el paso 1?', en: 'Restart this lesson from step 1?' },
+  'lesson.resumeNotice': { es: 'Retomamos la lección en el paso {step}.', en: 'Picking up the lesson at step {step}.' },
+  'lesson.hint': { es: 'Las mayúsculas y los espacios no afectan a la respuesta.', en: 'Capital letters and spaces do not affect the answer.' },
+  'lesson.solutionTitle': { es: 'Ver solución con contraseña', en: 'View solution with password' },
+  'lesson.leave': { es: 'Salir de la lección', en: 'Leave the lesson' },
+  'lesson.continue': { es: 'Continuar', en: 'Continue' },
+  'lesson.answerLabel': { es: 'Introduce la orden', en: 'Enter the command' },
+  'lesson.answerPlaceholder': { es: 'Introduce la orden…', en: 'Enter the command…' },
+  'lesson.check': { es: 'Comprobar', en: 'Check' },
+  'lesson.back': { es: '← Atrás', en: '← Back' },
+  'lesson.terminalLabel': { es: '▣ Respuesta del sistema', en: '▣ System response' },
+  'lesson.correct': { es: 'Correcto. Continuamos.', en: 'Correct. Moving on.' },
+  'lesson.incorrectReview': { es: 'No es correcto. La respuesta esperada era {answer}.', en: 'That is not correct. The expected answer was {answer}.' },
+  'lesson.nextQuestion': { es: 'Siguiente pregunta', en: 'Next question' },
+  'lesson.incorrect': { es: 'Aún no es la orden correcta. Revisa la explicación y vuelve a intentarlo.', en: 'That is not the right command yet. Review the explanation and try again.' },
+  'finish.title': { es: 'Lección finalizada', en: 'Lesson finished' },
+  'finish.noErrors': { es: 'Sin errores', en: 'No mistakes' },
+  'finish.wrongAnswers': { es: '{count} respuesta incorrecta|{count} respuestas incorrectas', en: '{count} incorrect answer|{count} incorrect answers' },
+  'finish.practiceDone': { es: 'Práctica completada', en: 'Practice completed' },
+  'finish.passedLead': { es: 'Tu progreso ha quedado registrado en este dispositivo.', en: 'Your progress has been saved on this device.' },
+  'finish.failedLead': { es: 'Para completar una lección Review debes acertar las diez preguntas. Aquí tienes las soluciones que conviene repasar.', en: 'To complete a Review lesson you need to get all ten questions right. Here are the answers worth reviewing.' },
+  'finish.backToLessons': { es: 'Volver a las lecciones', en: 'Back to the lessons' },
+  'solution.prompt': { es: 'Introduce la contraseña de la solución.', en: 'Enter the solution password.' },
+  'solution.wrongPassword': { es: 'Contraseña incorrecta.', en: 'Incorrect password.' },
+  'solution.reveal': { es: 'Solución: {answer}', en: 'Solution: {answer}' },
+  'error.loadIndex': { es: 'No se ha podido cargar el índice de lecciones. Comprueba que la carpeta <code>orion/GDS</code> esté disponible junto a esta aplicación.', en: 'The lesson index could not be loaded. Make sure the <code>orion/GDS</code> folder is available next to this application.' }
+};
+const LANG_KEY = 'gds-training-lang';
+function getLang() { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'es'; }
+let lang = getLang();
+function t(key, vars) {
+  const entry = STRINGS[key];
+  let str = entry ? (entry[lang] || entry.es) : key;
+  if (vars) Object.keys(vars).forEach(name => { str = str.split(`{${name}}`).join(vars[name]); });
+  return str;
+}
+// Some counted phrases need a singular/plural form per language ("1 lección pendiente"
+// vs "3 lecciones pendientes"); the dictionary stores both forms separated by "|".
+function plural(key, count) {
+  const entry = STRINGS[key];
+  const template = entry ? (entry[lang] || entry.es) : key;
+  const forms = template.split('|');
+  const form = count === 1 && forms.length > 1 ? forms[0] : (forms[1] || forms[0]);
+  return form.split('{count}').join(count);
+}
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-attr]').forEach(el => {
+    el.dataset.i18nAttr.split(';').forEach(pair => {
+      const [attr, key] = pair.split(':');
+      if (attr && key) el.setAttribute(attr, t(key));
+    });
+  });
+}
+function renderLangSwitch() {
+  document.querySelectorAll('.lang-option').forEach(button => button.classList.toggle('active', button.dataset.lang === lang));
+}
+function refreshOpenDialogs() {
+  if (progressDialog.open) renderProgressDetails();
+  if (searchDialog.open) { if (searchIndex) renderSearch(searchInput.value); else searchResults.innerHTML = `<p class="loading">${t('search.preparing')}</p>`; }
+}
+function refreshCurrentView() {
+  renderNav();
+  if (session) renderScreen();
+  else if (activeMode) showLessons(activeMode);
+  else showHome();
+  refreshOpenDialogs();
+}
+function setLang(value) {
+  lang = value === 'en' ? 'en' : 'es';
+  localStorage.setItem(LANG_KEY, lang);
+  document.documentElement.lang = lang;
+  applyStaticI18n();
+  renderLangSwitch();
+  refreshCurrentView();
+}
+document.documentElement.lang = lang;
+
 function storage() { return JSON.parse(localStorage.getItem('gds-training-progress') || '{}'); }
 function save(data) { localStorage.setItem('gds-training-progress', JSON.stringify(data)); searchIndex = null; updateProgress(); }
 function progressKey(mode, number) { return `${mode}-${number}`; }
 function isDone(mode, number) { return Boolean(storage()[progressKey(mode, number)]); }
 function updateProgress() {
   const count = Object.keys(storage()).length;
-  document.querySelector('#progress-label').textContent = `${count} de 120 lecciones`;
+  document.querySelector('#progress-label').textContent = t('progress.count', { count });
   document.querySelector('#progress-bar').style.width = `${(count / 120) * 100}%`;
 }
 function completedIn(mode) { return contents.filter(item => isDone(mode, item.number)).length; }
@@ -122,11 +263,15 @@ function normalAnswer(value) {
   // ('03') don't change what was selected, so compare them as numbers.
   return /^\d+$/.test(stripped) ? String(Number(stripped)) : stripped;
 }
-function openProgress() {
-  progressDetails.innerHTML = `<p class="lead">Consulta tus lecciones superadas en este dispositivo.</p>${Object.entries(MODES).map(([id, mode]) => {
+function renderProgressDetails() {
+  progressDetails.innerHTML = `<p class="lead">${t('progress.intro')}</p>${Object.entries(MODES).map(([id, mode]) => {
     const completed = completedIn(id);
-    return `<div class="progress-detail"><span class="symbol">${mode.icon}</span><span><strong>${mode.label}</strong><small>${completed === 40 ? 'Modo completado' : `${40 - completed} lecciones pendientes`}</small></span><span>${completed} / 40</span></div>`;
+    const status = completed === 40 ? t('progress.modeComplete') : plural('progress.pending', 40 - completed);
+    return `<div class="progress-detail"><span class="symbol">${mode.icon}</span><span><strong>${mode.label}</strong><small>${status}</small></span><span>${completed} / 40</span></div>`;
   }).join('')}`;
+}
+function openProgress() {
+  renderProgressDetails();
   progressDialog.showModal();
 }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[c]); }
@@ -143,13 +288,13 @@ function solutionPassword(title, lessonNumber, pageNumber) {
   return normalPassword(String(lessonNumber) + firstTitleWord + String(pageNumber));
 }
 function showSolution(title, lessonNumber, pageNumber, answers) {
-  const entered = prompt('Introduce la contraseña de la solución.');
+  const entered = prompt(t('solution.prompt'));
   if (entered === null) return;
   if (normalPassword(entered) !== solutionPassword(title, lessonNumber, pageNumber)) {
-    alert('Contraseña incorrecta.');
+    alert(t('solution.wrongPassword'));
     return;
   }
-  alert('Solución: ' + answers[0]);
+  alert(t('solution.reveal', { answer: answers[0] }));
 }
 
 function parseDirectory(text) {
@@ -323,7 +468,7 @@ async function loadLesson(mode, number) {
   for (const part of parts) {
     const response = await fetch(`${SOURCE}${sourceFile(mode, number, part)}`);
     if (!response.ok) {
-      if (part === '') throw new Error(`No se pudo cargar la lección ${number}.`);
+      if (part === '') throw new Error(t('lesson.loadError', { number }));
       break;
     }
     const parsed = parseLesson(await response.text()).map(screen => applyAnswerFix(mode, number, part, screen));
@@ -336,27 +481,27 @@ function renderNav() {
   nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { showLessons(button.dataset.mode); closeSidebar(); }));
 }
 function showHome() {
-  activeMode = null; activeLesson = null; session = null; renderNav(); crumb.textContent = 'Inicio';
-  app.innerHTML = `<section class="home-hero"><div><div class="eyebrow">Formación GDS</div><h1>Tu terminal de práctica, ahora en cualquier dispositivo.</h1><p class="lead">La misma formación del simulador original, reimaginada como una experiencia clara, guiada y con tu progreso guardado en este dispositivo.</p><div class="hero-pills"><span>✈ 120 lecciones</span><span>◫ Progreso personal</span><span>⌕ Búsqueda de órdenes</span></div></div><img src="modern/assets/travel-training.svg" alt="Avión y ruta de aprendizaje sobre un globo" /></section><section class="mode-grid">${Object.entries(MODES).map(([id, mode]) => `<article class="mode-card mode-${id}"><div class="mode-symbol">${mode.icon}</div><h2>${mode.label}</h2><p>${mode.description}</p><button class="primary-button" data-mode="${id}">Ver las 40 lecciones <span aria-hidden="true">→</span></button></article>`).join('')}</section>`;
+  activeMode = null; activeLesson = null; session = null; renderNav(); crumb.textContent = t('nav.home');
+  app.innerHTML = `<section class="home-hero"><div><div class="eyebrow">${t('home.eyebrow')}</div><h1>${t('home.title')}</h1><p class="lead">${t('home.lead')}</p><div class="hero-pills"><span>${t('home.pillLessons')}</span><span>${t('home.pillProgress')}</span><span>${t('home.pillSearch')}</span></div></div><img src="modern/assets/travel-training.svg" alt="${t('home.imageAlt')}" /></section><section class="mode-grid">${Object.entries(MODES).map(([id, mode]) => `<article class="mode-card mode-${id}"><div class="mode-symbol">${mode.icon}</div><h2>${mode.label}</h2><p>${t('mode.' + id + '.desc')}</p><button class="primary-button" data-mode="${id}">${t('home.viewLessons')} <span aria-hidden="true">→</span></button></article>`).join('')}</section>`;
   app.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => showLessons(button.dataset.mode)));
 }
 function showLessons(mode) {
   activeMode = mode; activeLesson = null; session = null; renderNav();
   const info = MODES[mode]; crumb.textContent = info.label;
-  app.innerHTML = `<div class="lesson-top"><div><div class="eyebrow">${info.label}</div><h1>${info.label}</h1><p>${info.description}</p></div><button class="secondary-button" id="home-button">← Inicio</button></div><section class="lesson-list">${(() => { const pos = positions(); return contents.map(item => {
+  app.innerHTML = `<div class="lesson-top"><div><div class="eyebrow">${info.label}</div><h1>${info.label}</h1><p>${t('mode.' + mode + '.desc')}</p></div><button class="secondary-button" id="home-button">${t('lessons.back')}</button></div><section class="lesson-list">${(() => { const pos = positions(); return contents.map(item => {
     const theme = lessonTheme(item.number);
     const done = isDone(mode, item.number);
     const savedIndex = pos[progressKey(mode, item.number)];
     const inProgress = !done && savedIndex !== undefined;
-    const status = done ? 'Completada' : inProgress ? `En curso · Paso ${savedIndex + 1}` : mode === 'review' ? 'Examen · 10 preguntas' : 'Práctica guiada';
-    return `<button class="lesson-card theme-${theme.kind} ${done ? 'done' : ''} ${inProgress ? 'in-progress' : ''}" data-lesson="${item.number}"><span class="lesson-number">${done ? '✓' : inProgress ? '●' : item.number}</span><span class="lesson-emblem" aria-hidden="true">${theme.icon}</span><span><small class="lesson-category">${theme.label}</small><strong>${escapeHtml(item.title)}</strong><small class="lesson-status">${status}</small></span></button>`;
+    const status = done ? t('lessons.status.done') : inProgress ? t('lessons.status.inProgress', { step: savedIndex + 1 }) : mode === 'review' ? t('lessons.status.review') : t('lessons.status.practice');
+    return `<button class="lesson-card theme-${theme.kind} ${done ? 'done' : ''} ${inProgress ? 'in-progress' : ''}" data-lesson="${item.number}"><span class="lesson-number">${done ? '✓' : inProgress ? '●' : item.number}</span><span class="lesson-emblem" aria-hidden="true">${theme.icon}</span><span><small class="lesson-category">${t('theme.' + theme.kind)}</small><strong>${escapeHtml(item.title)}</strong><small class="lesson-status">${status}</small></span></button>`;
   }); })().join('')}</section>`;
   document.querySelector('#home-button').addEventListener('click', showHome);
   app.querySelectorAll('[data-lesson]').forEach(button => button.addEventListener('click', () => startLesson(mode, Number(button.dataset.lesson))));
 }
 async function startLesson(mode, number) {
-  activeMode = mode; activeLesson = number; crumb.textContent = `${MODES[mode].label} · Lección ${number}`;
-  app.innerHTML = '<p class="loading">Preparando la lección…</p>';
+  activeMode = mode; activeLesson = number; crumb.textContent = `${MODES[mode].label} · ${t('lesson.crumb', { number })}`;
+  app.innerHTML = `<p class="loading">${t('lesson.preparing')}</p>`;
   try {
     const screens = await loadLesson(mode, number);
     const resumeIndex = Math.min(savedPosition(mode, number), Math.max(screens.length - 1, 0));
@@ -389,7 +534,7 @@ function renderScreen() {
   savePosition(session.mode, session.number, session.index);
   const showResumeNotice = Boolean(session.justResumed);
   session.justResumed = false;
-  const title = contents.find(item => item.number === session.number)?.title || `Lección ${session.number}`;
+  const title = contents.find(item => item.number === session.number)?.title || t('lesson.fallbackTitle', { number: session.number });
   const theme = lessonTheme(session.number);
   const answers = usefulAnswers(screen);
   const isPager = screen.answers.some(answer => normalAnswer(answer) === 'PD') && !answers.length;
@@ -397,10 +542,10 @@ function renderScreen() {
   const terminal = terminalForCurrentScreen();
   const illustration = ILLUSTRATIONS[pickIllustration(screen, theme)];
   const canGoBack = session.mode === 'classroom' || session.mode === 'agency';
-  const backButton = canGoBack && session.index > 0 ? '<button class="secondary-button" id="back">← Atrás</button>' : '';
-  const continueControls = `<div class="stage-actions">${backButton}<span></span><button class="primary-button" id="continue">Continuar</button></div>`;
-  const answerControls = `<div class="stage-actions">${backButton}<p class="hint">Las mayúsculas y los espacios no afectan a la respuesta.</p><div class="answer-actions"><button class="solution-button" id="solution" title="Ver solución con contraseña">S</button><button class="secondary-button" id="leave">Salir de la lección</button></div></div>`;
-  app.innerHTML = `<article class="lesson-stage"><header class="stage-heading"><div><div class="eyebrow">${MODES[session.mode].label} · Lección ${session.number}</div><h2>${escapeHtml(title)}</h2><p>${session.mode === 'review' ? `Pregunta ${Math.min(session.index + 1, 10)} de 10` : 'Práctica guiada'}</p></div><div class="stage-heading-actions"><span class="step">Paso ${session.index + 1} / ${session.screens.length}</span>${session.index > 0 ? '<button class="text-button" id="restart-lesson" title="Volver al paso 1">↺ Reiniciar lección</button>' : ''}</div></header><div class="lesson-body"><div class="lesson-main">${showResumeNotice ? `<p class="notice good">Retomamos la lección en el paso ${session.index + 1}.</p>` : ''}<pre class="terminal">${escapeHtml(terminal.join('\n'))}</pre><div class="instruction">${instructionHtml}</div>${isPager ? continueControls : answers.length ? `<form id="answer-form"><div class="command-row"><input id="command-input" aria-label="Introduce la orden" placeholder="Introduce la orden…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus /><button class="primary-button">Comprobar</button></div></form><div id="feedback"></div>${answerControls}` : continueControls}</div><div class="step-illustration theme-${theme.kind}" aria-hidden="true">${illustration}</div></div></article>`;
+  const backButton = canGoBack && session.index > 0 ? `<button class="secondary-button" id="back">${t('lesson.back')}</button>` : '';
+  const continueControls = `<div class="stage-actions">${backButton}<span></span><button class="primary-button" id="continue">${t('lesson.continue')}</button></div>`;
+  const answerControls = `<div class="stage-actions">${backButton}<p class="hint">${t('lesson.hint')}</p><div class="answer-actions"><button class="solution-button" id="solution" title="${t('lesson.solutionTitle')}">S</button><button class="secondary-button" id="leave">${t('lesson.leave')}</button></div></div>`;
+  app.innerHTML = `<article class="lesson-stage"><header class="stage-heading"><div><div class="eyebrow">${MODES[session.mode].label} · ${t('lesson.crumb', { number: session.number })}</div><h2>${escapeHtml(title)}</h2><p>${session.mode === 'review' ? t('lesson.question', { current: Math.min(session.index + 1, 10) }) : t('lessons.status.practice')}</p></div><div class="stage-heading-actions"><span class="step">${t('lesson.step', { current: session.index + 1, total: session.screens.length })}</span>${session.index > 0 ? `<button class="text-button" id="restart-lesson" title="${t('lesson.restartTitle')}">${t('lesson.restart')}</button>` : ''}</div></header><div class="lesson-body"><div class="lesson-main">${showResumeNotice ? `<p class="notice good">${t('lesson.resumeNotice', { step: session.index + 1 })}</p>` : ''}<pre class="terminal">${escapeHtml(terminal.join('\n'))}</pre><div class="instruction">${instructionHtml}</div>${isPager ? continueControls : answers.length ? `<form id="answer-form"><div class="command-row"><input id="command-input" aria-label="${t('lesson.answerLabel')}" placeholder="${t('lesson.answerPlaceholder')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus /><button class="primary-button">${t('lesson.check')}</button></div></form><div id="feedback"></div>${answerControls}` : continueControls}</div><div class="step-illustration theme-${theme.kind}" aria-hidden="true">${illustration}</div></div></article>`;
   const continueButton = document.querySelector('#continue');
   if (continueButton) continueButton.addEventListener('click', nextScreen);
   const backButtonElement = document.querySelector('#back');
@@ -409,7 +554,7 @@ function renderScreen() {
   if (leave) leave.addEventListener('click', () => showLessons(session.mode));
   const restart = document.querySelector('#restart-lesson');
   if (restart) restart.addEventListener('click', () => {
-    if (!confirm('¿Reiniciar esta lección desde el paso 1?')) return;
+    if (!confirm(t('lesson.restartConfirm'))) return;
     session.index = 0;
     session.wrong = [];
     clearPosition(session.mode, session.number);
@@ -425,7 +570,7 @@ function renderScreen() {
   if (terminal.length) {
     const label = document.createElement('div');
     label.className = 'terminal-label';
-    label.textContent = '▣ Respuesta del sistema';
+    label.textContent = t('lesson.terminalLabel');
     document.querySelector('.terminal').before(label);
   }
 }
@@ -435,16 +580,16 @@ function submitAnswer(answers) {
   if (!normalAnswer(input.value)) return;
   const correct = answers.some(answer => normalAnswer(answer) === normalAnswer(input.value));
   if (correct) {
-    feedback.innerHTML = '<div class="notice good">Correcto. Continuamos.</div>';
+    feedback.innerHTML = `<div class="notice good">${t('lesson.correct')}</div>`;
     input.disabled = true;
     setTimeout(nextScreen, 500);
   } else if (session.mode === 'review') {
     session.wrong.push({ question: currentScreen().text.map(plainText).join(' '), answer: answers[0] });
-    feedback.innerHTML = `<div class="notice bad">No es correcto. La respuesta esperada era <strong>${escapeHtml(answers[0])}</strong>.</div><div class="stage-actions"><span></span><button class="primary-button" id="next-question">Siguiente pregunta</button></div>`;
+    feedback.innerHTML = `<div class="notice bad">${t('lesson.incorrectReview', { answer: `<strong>${escapeHtml(answers[0])}</strong>` })}</div><div class="stage-actions"><span></span><button class="primary-button" id="next-question">${t('lesson.nextQuestion')}</button></div>`;
     input.disabled = true;
     document.querySelector('#next-question').addEventListener('click', nextScreen);
   } else {
-    feedback.innerHTML = '<div class="notice bad">Aún no es la orden correcta. Revisa la explicación y vuelve a intentarlo.</div>';
+    feedback.innerHTML = `<div class="notice bad">${t('lesson.incorrect')}</div>`;
     input.select();
   }
 }
@@ -458,12 +603,14 @@ function finishLesson() {
   const passed = !review || session.wrong.length === 0;
   const correctAnswers = 10 - session.wrong.length;
   if (passed) { const data = storage(); data[progressKey(session.mode, session.number)] = true; save(data); }
-  app.innerHTML = `<article class="lesson-stage final"><div class="eyebrow">Lección finalizada</div><span class="result-number">${review ? `${correctAnswers}/10` : '✓'}</span><h2>${review ? (passed ? 'Sin errores' : `${session.wrong.length} respuesta${session.wrong.length === 1 ? '' : 's'} incorrecta${session.wrong.length === 1 ? '' : 's'}`) : 'Práctica completada'}</h2><p class="lead">${passed ? 'Tu progreso ha quedado registrado en este dispositivo.' : 'Para completar una lección Review debes acertar las diez preguntas. Aquí tienes las soluciones que conviene repasar.'}</p>${session.wrong.length ? `<div class="solution-list">${session.wrong.map(item => `<div class="solution"><strong>${escapeHtml(item.question)}</strong><code>${escapeHtml(item.answer)}</code></div>`).join('')}</div>` : ''}<p><button class="primary-button" id="back-lessons">Volver a las lecciones</button></p></article>`;
+  const resultTitle = review ? (passed ? t('finish.noErrors') : plural('finish.wrongAnswers', session.wrong.length)) : t('finish.practiceDone');
+  const leadText = passed ? t('finish.passedLead') : t('finish.failedLead');
+  app.innerHTML = `<article class="lesson-stage final"><div class="eyebrow">${t('finish.title')}</div><span class="result-number">${review ? `${correctAnswers}/10` : '✓'}</span><h2>${resultTitle}</h2><p class="lead">${leadText}</p>${session.wrong.length ? `<div class="solution-list">${session.wrong.map(item => `<div class="solution"><strong>${escapeHtml(item.question)}</strong><code>${escapeHtml(item.answer)}</code></div>`).join('')}</div>` : ''}<p><button class="primary-button" id="back-lessons">${t('finish.backToLessons')}</button></p></article>`;
   document.querySelector('#back-lessons').addEventListener('click', () => showLessons(session.mode));
 }
 async function buildSearchIndex() {
   if (searchIndex) return searchIndex;
-  searchResults.innerHTML = '<p class="loading">Preparando las órdenes de tus lecciones completadas…</p>';
+  searchResults.innerHTML = `<p class="loading">${t('search.preparing')}</p>`;
   const entries = [];
   await Promise.all(Object.keys(MODES).flatMap(mode => contents.map(async item => {
     if (!isDone(mode, item.number)) return;
@@ -476,14 +623,14 @@ async function buildSearchIndex() {
   return entries;
 }
 async function openSearch() {
-  searchDialog.showModal(); searchInput.value = ''; searchInput.focus(); searchResults.innerHTML = '<p class="loading">Escribe un término para buscar entre las órdenes de tus lecciones completadas.</p>';
+  searchDialog.showModal(); searchInput.value = ''; searchInput.focus(); searchResults.innerHTML = `<p class="loading">${t('search.hint')}</p>`;
   await buildSearchIndex();
 }
 function renderSearch(query) {
-  if (!query.trim()) { searchResults.innerHTML = '<p class="loading">Busca por ejemplo <strong>DAC</strong>, <strong>hotel</strong> o <strong>Bangkok</strong> en las lecciones superadas.</p>'; return; }
+  if (!query.trim()) { searchResults.innerHTML = `<p class="loading">${t('search.empty')}</p>`; return; }
   const terms = normal(query).split(' ');
   const matches = searchIndex.filter(item => terms.every(term => normal(`${item.command} ${item.context} ${item.title}`).includes(term))).slice(0, 30);
-  searchResults.innerHTML = matches.length ? matches.map(item => `<button class="search-result" data-mode="${item.mode}" data-lesson="${item.number}"><strong><code>${escapeHtml(item.command)}</code> · ${escapeHtml(item.title)}</strong><span>${escapeHtml(item.context.slice(0, 170))}</span></button>`).join('') : '<p class="loading">No se ha encontrado ninguna orden con esos términos.</p>';
+  searchResults.innerHTML = matches.length ? matches.map(item => `<button class="search-result" data-mode="${item.mode}" data-lesson="${item.number}"><strong><code>${escapeHtml(item.command)}</code> · ${escapeHtml(item.title)}</strong><span>${escapeHtml(item.context.slice(0, 170))}</span></button>`).join('') : `<p class="loading">${t('search.noResults')}</p>`;
   searchResults.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { searchDialog.close(); startLesson(button.dataset.mode, Number(button.dataset.lesson)); }));
 }
 document.querySelector('#search-button').addEventListener('click', openSearch);
@@ -501,9 +648,12 @@ document.querySelector('#menu-button').addEventListener('click', openSidebar);
 document.querySelector('#close-sidebar').addEventListener('click', closeSidebar);
 sidebarBackdrop.addEventListener('click', closeSidebar);
 document.querySelector('#progress-button').addEventListener('click', () => { closeSidebar(); });
-document.querySelector('#reset-progress').addEventListener('click', () => { if (confirm('¿Quieres borrar el progreso guardado en este dispositivo?')) { localStorage.removeItem('gds-training-progress'); localStorage.removeItem('gds-training-position'); updateProgress(); if (activeMode) showLessons(activeMode); else showHome(); } });
+document.querySelector('#reset-progress').addEventListener('click', () => { if (confirm(t('progress.resetConfirm'))) { localStorage.removeItem('gds-training-progress'); localStorage.removeItem('gds-training-position'); updateProgress(); if (activeMode) showLessons(activeMode); else showHome(); } });
+document.querySelectorAll('.lang-option').forEach(button => button.addEventListener('click', () => setLang(button.dataset.lang)));
+applyStaticI18n();
+renderLangSwitch();
 // The service worker used to be disabled on localhost to dodge cache-testing headaches
 // during development; now that installability is the point, it registers everywhere
 // (including localhost, so "Install app" and offline lessons work from Live Server too).
 if ('serviceWorker' in navigator && !location.pathname.includes('/modern/')) navigator.serviceWorker.register('./service-worker.js');
-loadContents().then(() => { updateProgress(); showHome(); }).catch(() => { app.innerHTML = '<p class="notice bad">No se ha podido cargar el índice de lecciones. Comprueba que la carpeta <code>orion/GDS</code> esté disponible junto a esta aplicación.</p>'; });
+loadContents().then(() => { updateProgress(); showHome(); }).catch(() => { app.innerHTML = `<p class="notice bad">${t('error.loadIndex')}</p>`; });
