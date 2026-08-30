@@ -221,6 +221,18 @@ function plural(key, count) {
   const form = count === 1 && forms.length > 1 ? forms[0] : (forms[1] || forms[0]);
   return form.split('{count}').join(count);
 }
+// The mandatory profile gate is often the very first screen a student ever sees, before
+// they've had any chance to find the language switcher, so its text is always shown in
+// both languages at once rather than following the current `lang` toggle like the rest
+// of the UI. `bi(key)` looks up both translations regardless of `lang`.
+function bi(key, vars) {
+  const entry = STRINGS[key];
+  if (!entry) return key;
+  const fill = str => (vars ? Object.keys(vars).reduce((acc, name) => acc.split(`{${name}}`).join(vars[name]), str) : str);
+  const es = fill(entry.es);
+  const en = fill(entry.en || entry.es);
+  return es === en ? es : `${es} / ${en}`;
+}
 function applyStaticI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-attr]').forEach(el => {
@@ -343,9 +355,9 @@ function validateProfile(formData) {
   const lastName = String(formData.get('lastName') || '').trim();
   const idNumber = String(formData.get('idNumber') || '').trim();
   const email = String(formData.get('email') || '').trim();
-  if (!firstName || !lastName || !idNumber || !email) return { error: t('profile.errorRequired') };
-  if (idNumber.replace(/\s+/g, '').length < 5) return { error: t('profile.errorId') };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: t('profile.errorEmail') };
+  if (!firstName || !lastName || !idNumber || !email) return { error: bi('profile.errorRequired') };
+  if (idNumber.replace(/\s+/g, '').length < 5) return { error: bi('profile.errorId') };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: bi('profile.errorEmail') };
   return { profile: { firstName, lastName, idNumber, email, savedAt: new Date().toISOString() } };
 }
 let gateActive = false;
@@ -361,15 +373,15 @@ function renderGate(options) {
   const onDone = gateOptions.onDone || showHome;
   gateActive = true;
   nav.innerHTML = '';
-  const heading = isUpdate ? t('profile.updateTitle') : t('profile.gateTitle');
+  const heading = isUpdate ? bi('profile.updateTitle') : bi('profile.gateTitle');
   crumb.textContent = heading;
-  app.innerHTML = `<section class="profile-gate"><div class="profile-card"><div class="eyebrow">${t('home.eyebrow')}</div><h1>${heading}</h1><p class="lead">${t('profile.gateIntro')}</p><form id="profile-form" class="profile-form" novalidate>
-    <label>${t('profile.firstName')}<input name="firstName" required autocomplete="given-name" value="${escapeHtml(prefill.firstName || '')}" /></label>
-    <label>${t('profile.lastName')}<input name="lastName" required autocomplete="family-name" value="${escapeHtml(prefill.lastName || '')}" /></label>
-    <label>${t('profile.idNumber')}<input name="idNumber" required autocomplete="off" value="${escapeHtml(prefill.idNumber || '')}" /></label>
-    <label>${t('profile.email')}<input name="email" type="email" required autocomplete="email" value="${escapeHtml(prefill.email || '')}" /></label>
+  app.innerHTML = `<section class="profile-gate"><div class="profile-card"><div class="eyebrow">${bi('home.eyebrow')}</div><h1>${heading}</h1><p class="lead">${bi('profile.gateIntro')}</p><form id="profile-form" class="profile-form" novalidate>
+    <label>${bi('profile.firstName')}<input name="firstName" required autocomplete="given-name" value="${escapeHtml(prefill.firstName || '')}" /></label>
+    <label>${bi('profile.lastName')}<input name="lastName" required autocomplete="family-name" value="${escapeHtml(prefill.lastName || '')}" /></label>
+    <label>${bi('profile.idNumber')}<input name="idNumber" required autocomplete="off" value="${escapeHtml(prefill.idNumber || '')}" /></label>
+    <label>${bi('profile.email')}<input name="email" type="email" required autocomplete="email" value="${escapeHtml(prefill.email || '')}" /></label>
     <div id="profile-error" class="notice bad" hidden></div>
-    <div class="profile-actions">${isUpdate ? `<button type="button" class="secondary-button" id="profile-cancel">${t('common.cancel')}</button>` : '<span></span>'}<button class="primary-button" type="submit">${isUpdate ? t('profile.update') : t('profile.save')}</button></div>
+    <div class="profile-actions">${isUpdate ? `<button type="button" class="secondary-button" id="profile-cancel">${bi('common.cancel')}</button>` : '<span></span>'}<button class="primary-button" type="submit">${isUpdate ? bi('profile.update') : bi('profile.save')}</button></div>
   </form></div></section>`;
   document.querySelector('#profile-form').addEventListener('submit', event => {
     event.preventDefault();
