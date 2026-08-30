@@ -538,19 +538,80 @@ function groupBlocks(rawLines) {
   return blocks;
 }
 const KEYWORD_RE = /\b[A-Z][A-Z0-9]{1,9}\b/g;
+// Paragraph-level topic icons: a small, restrained glyph set (matching the app's own
+// existing icon language -- the lesson-theme symbols and the lookup/search glyphs) shown
+// once per paragraph or bullet when its own wording names one of these concrete topics.
+const INLINE_ICON_KEYWORDS = [
+  ['✈', ['FLIGHT NUMBER', 'CARRIER', 'DIRECT FLIGHT', 'CONNECTING FLIGHT', 'NONSTOP', 'DIRECT SERVICE']],
+  ['⌂', ['HOTEL', 'ROOM TYPE', 'CHAIN CODE', 'GUARANTEE', 'CHECK-IN', 'CHECK-OUT']],
+  ['▱', ['RENTAL CAR', 'CAR RENTAL', 'DRIVER', 'VEHICLE', 'PICK-UP', 'DROP-OFF']],
+  ['☏', ['TELEPHONE', 'PHONE NUMBER', 'CONTACT ELEMENT', 'CONTACT POINT']],
+  ['▣', ['BAGGAGE', 'LUGGAGE', 'ALLOWANCE']],
+  ['▦', ['TIME LIMIT', 'DEPARTURE DATE', 'TICKETING DEADLINE', 'QUEUE DATE']],
+  ['€', ['FARE CALCULATION', 'PAYMENT', 'CASH', 'CREDIT CARD', 'CHEQUE', 'TOTAL AMOUNT']],
+  ['◇', ['FARE BASIS', 'DISCOUNT', 'NEGOTIATED FARE', 'PUBLISHED FARE']],
+  ['⊕', ['REMARK', 'OSI', 'SSR', 'SPECIAL SERVICE REQUEST']]
+];
+function pickInlineIcon(text) {
+  const haystack = text.toUpperCase();
+  for (const [icon, keywords] of INLINE_ICON_KEYWORDS) {
+    if (keywords.some(keyword => haystack.includes(keyword))) return icon;
+  }
+  return null;
+}
+function iconSpan(icon) { return icon ? `<span class="para-icon" aria-hidden="true">${icon}</span>` : ''; }
+// Beyond ALL-CAPS command codes (handled by boldKeywords below), a lesson's prose also
+// carries plain-English GDS terminology worth calling out. Matched case-insensitively
+// and only against phrases the lessons actually use, so this never invents meaning --
+// it just makes existing vocabulary easier to spot while reading.
+const DOMAIN_PHRASES = [
+  'flight number', 'direct flight', 'connecting flight', 'nonstop',
+  'room type', 'chain code', 'check-in', 'check-out', 'rental car', 'car rental', 'pick-up', 'drop-off',
+  'contact element', 'contact point', 'phone number', 'baggage allowance',
+  'time limit', 'departure date', 'ticketing deadline', 'queue date',
+  'fare calculation', 'credit card', 'total amount',
+  'fare basis', 'negotiated fare', 'published fare', 'special service request',
+  'passenger name', 'surname', 'itinerary', 'class of service', 'frequent flyer',
+  'ticket number', 'issuing airline', 'point of sale'
+];
+const DOMAIN_PHRASE_RE = new RegExp('\\b(' + DOMAIN_PHRASES.join('|') + ')\\b', 'gi');
+function highlightDomainTerms(escapedText) {
+  return escapedText.replace(DOMAIN_PHRASE_RE, match => `<mark class="term-phrase">${match}</mark>`);
+}
+// A per-code lookup built once the city/airport reference (loaded for the quick-lookup
+// tool) is available, so the same data source powers both features.
+function codeLookupMap() {
+  if (!codeIndex) return null;
+  if (!codeIndex.__map) codeIndex.__map = new Map(codeIndex.map(entry => [entry.code, entry.info]));
+  return codeIndex.__map;
+}
+// Highlights every ALL-CAPS token that either (a) was taught earlier in this very lesson
+// via an on-screen glossary/definition, or (b) is a recognized city/airport code -- in
+// both cases adding a small icon and a title tooltip, using only what the lesson itself
+// (or the bundled code reference) already states.
 function boldKeywords(escapedText) {
-  return escapedText.replace(KEYWORD_RE, match => `<strong class="kw">${match}</strong>`);
+  const glossary = session && session.glossary;
+  const codes = codeLookupMap();
+  return escapedText.replace(KEYWORD_RE, match => {
+    const learned = glossary && glossary.get(match);
+    if (learned) return `<strong class="kw kw-term" title="${escapeHtml(learned)}"><span class="kw-icon" aria-hidden="true">◆</span>${match}</strong>`;
+    const place = codes && codes.get(match);
+    if (place) return `<strong class="kw kw-place" title="${escapeHtml(place)}"><span class="kw-icon" aria-hidden="true">⌗</span>${match}</strong>`;
+    return `<strong class="kw">${match}</strong>`;
+  });
 }
 function renderInstructionBlock(block) {
   switch (block.kind) {
-    case 'prose':
-      return `<p>${boldKeywords(escapeHtml(block.text.trim()))}</p>`;
+    case 'prose': {
+      const icon = pickInlineIcon(block.text);
+      return `<p class="${icon ? 'has-icon' : ''}">${iconSpan(icon)}${boldKeywords(highlightDomainTerms(escapeHtml(block.text.trim())))}</p>`;
+    }
     case 'bullet': {
       const compact = block.items.length >= 4 && block.items.every(i => i.length <= 60) ? ' columns' : '';
-      return `<ul class="instruction-list${compact}">${block.items.map(i => `<li>${boldKeywords(escapeHtml(i))}</li>`).join('')}</ul>`;
+      return `<ul class="instruction-list${compact}">${block.items.map(i => { const icon = pickInlineIcon(i); return `<li class="${icon ? 'has-icon' : ''}">${iconSpan(icon)}${boldKeywords(highlightDomainTerms(escapeHtml(i)))}</li>`; }).join('')}</ul>`;
     }
     case 'definition':
-      return `<dl class="instruction-legend">${block.pairs.map(p => `<div class="legend-row"><dt>${escapeHtml(p.code)}</dt><dd>${boldKeywords(escapeHtml(p.desc))}</dd></div>`).join('')}</dl>`;
+      return `<dl class="instruction-legend">${block.pairs.map(p => `<div class="legend-row"><dt>${escapeHtml(p.code)}</dt><dd>${boldKeywords(highlightDomainTerms(escapeHtml(p.desc)))}</dd></div>`).join('')}</dl>`;
     case 'legend':
       return `<div class="instruction-diagram">${block.items.map(it => it.left
         ? `<div class="diagram-pair"><span>${escapeHtml(it.left)}</span><span class="arrow" aria-hidden="true">→</span><span>${escapeHtml(it.right)}</span></div>`
@@ -588,6 +649,22 @@ function parseLesson(text) {
     else if (type === 9) screen.end = true;
   }
   return [...screens.values()].sort((a, b) => a.id - b.id);
+}
+// A per-lesson glossary of every code the lesson itself teaches via an on-screen
+// definition table, gathered up front across every screen and file part, so
+// boldKeywords() can recognize and explain a re-mention anywhere in the lesson.
+function buildGlossary(screens) {
+  const glossary = new Map();
+  for (const screen of screens) {
+    for (const block of groupBlocks(screen.text)) {
+      if (block.kind !== 'definition') continue;
+      for (const pair of block.pairs) {
+        const code = pair.code.trim();
+        if (/^[A-Z][A-Z0-9]{1,9}$/.test(code) && !glossary.has(code)) glossary.set(code, pair.desc);
+      }
+    }
+  }
+  return glossary;
 }
 async function loadContents() {
   const response = await fetch(`${SOURCE}DIR.DSP`);
@@ -653,7 +730,7 @@ async function startLesson(mode, number) {
   try {
     const screens = await loadLesson(mode, number);
     const resumeIndex = Math.min(savedPosition(mode, number), Math.max(screens.length - 1, 0));
-    session = { mode, number, screens, index: resumeIndex, wrong: [], errorInQuestion: false, justResumed: resumeIndex > 0 };
+    session = { mode, number, screens, index: resumeIndex, wrong: [], errorInQuestion: false, justResumed: resumeIndex > 0, glossary: buildGlossary(screens) };
     renderScreen();
   } catch (error) { app.innerHTML = `<p class="notice bad">${escapeHtml(error.message)}</p>`; }
 }
@@ -676,6 +753,22 @@ function terminalForCurrentScreen() {
   }
   return terminal;
 }
+function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+// Which tokens the CURRENT screen's own wording names -- used only on explanation-only
+// steps, to highlight in the (possibly carried-over) terminal display exactly what that
+// screen is talking about right now.
+function collectScreenTokens(screen) {
+  const haystack = [...screen.title, ...screen.text].join(' ');
+  const tokens = new Set();
+  for (const match of haystack.matchAll(KEYWORD_RE)) tokens.add(match[0]);
+  return tokens;
+}
+function highlightTerminal(text, tokens) {
+  const escaped = escapeHtml(text);
+  if (!tokens || !tokens.size) return escaped;
+  const pattern = new RegExp('\\b(' + [...tokens].map(escapeRegExp).join('|') + ')\\b', 'g');
+  return escaped.replace(pattern, match => `<mark class="term-hl">${match}</mark>`);
+}
 function renderScreen() {
   const screen = currentScreen();
   if (!screen) return finishLesson();
@@ -691,12 +784,15 @@ function renderScreen() {
   const isPager = screen.answers.some(answer => normalAnswer(answer) === 'PD') && !answers.length;
   const instructionHtml = formatInstructionHtml(screen.title.join(' '), screen.text);
   const terminal = terminalForCurrentScreen();
+  // Only explanation-only steps (no answer to protect) get their terminal display
+  // highlighted for what is being explained right now.
+  const terminalTokens = !usefulAnswers(screen).length ? collectScreenTokens(screen) : null;
   const illustration = ILLUSTRATIONS[pickIllustration(screen, theme)];
   const canGoBack = session.mode === 'classroom' || session.mode === 'agency';
   const backButton = canGoBack && session.index > 0 ? `<button class="secondary-button" id="back">${t('lesson.back')}</button>` : '';
   const continueControls = `<div class="stage-actions">${backButton}<span></span><button class="primary-button" id="continue">${t('lesson.continue')}</button></div>`;
   const answerControls = `<div class="stage-actions">${backButton}<p class="hint">${t('lesson.hint')}</p><div class="answer-actions"><button class="solution-button" id="lookup-quick" title="${t('lookup.openTitle')}">⌗</button><button class="solution-button" id="solution" title="${t('lesson.solutionTitle')}">S</button><button class="secondary-button" id="leave">${t('lesson.leave')}</button></div></div>`;
-  app.innerHTML = `<article class="lesson-stage"><header class="stage-heading"><div><div class="eyebrow">${MODES[session.mode].label} · ${t('lesson.crumb', { number: session.number })}</div><h2>${escapeHtml(title)}</h2><p>${session.mode === 'review' ? t('lesson.question', { current: Math.min(session.index + 1, 10) }) : t('lessons.status.practice')}</p></div><div class="stage-heading-actions"><span class="step">${t('lesson.step', { current: session.index + 1, total: session.screens.length })}</span>${session.index > 0 ? `<button class="text-button" id="restart-lesson" title="${t('lesson.restartTitle')}">${t('lesson.restart')}</button>` : ''}</div></header><div class="lesson-body"><div class="lesson-main">${showResumeNotice ? `<p class="notice good">${t('lesson.resumeNotice', { step: session.index + 1 })}</p>` : ''}<pre class="terminal">${escapeHtml(terminal.join('\n'))}</pre><div class="instruction">${instructionHtml}</div>${isPager ? continueControls : answers.length ? `<form id="answer-form"><div class="command-row"><input id="command-input" aria-label="${t('lesson.answerLabel')}" placeholder="${t('lesson.answerPlaceholder')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus /><button class="primary-button">${t('lesson.check')}</button></div></form><div id="feedback"></div>${answerControls}` : continueControls}</div><div class="step-illustration theme-${theme.kind}" aria-hidden="true">${illustration}</div></div></article>`;
+  app.innerHTML = `<article class="lesson-stage"><header class="stage-heading"><div><div class="eyebrow">${MODES[session.mode].label} · ${t('lesson.crumb', { number: session.number })}</div><h2>${escapeHtml(title)}</h2><p>${session.mode === 'review' ? t('lesson.question', { current: Math.min(session.index + 1, 10) }) : t('lessons.status.practice')}</p></div><div class="stage-heading-actions"><span class="step">${t('lesson.step', { current: session.index + 1, total: session.screens.length })}</span>${session.index > 0 ? `<button class="text-button" id="restart-lesson" title="${t('lesson.restartTitle')}">${t('lesson.restart')}</button>` : ''}</div></header><div class="lesson-body"><div class="lesson-main">${showResumeNotice ? `<p class="notice good">${t('lesson.resumeNotice', { step: session.index + 1 })}</p>` : ''}<pre class="terminal">${highlightTerminal(terminal.join('\n'), terminalTokens)}</pre><div class="instruction">${instructionHtml}</div>${isPager ? continueControls : answers.length ? `<form id="answer-form"><div class="command-row"><input id="command-input" aria-label="${t('lesson.answerLabel')}" placeholder="${t('lesson.answerPlaceholder')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus /><button class="primary-button">${t('lesson.check')}</button></div></form><div id="feedback"></div>${answerControls}` : continueControls}</div><div class="step-illustration theme-${theme.kind}" aria-hidden="true">${illustration}</div></div></article>`;
   const continueButton = document.querySelector('#continue');
   if (continueButton) continueButton.addEventListener('click', nextScreen);
   const backButtonElement = document.querySelector('#back');
@@ -875,4 +971,5 @@ renderLangSwitch();
 // during development; now that installability is the point, it registers everywhere
 // (including localhost, so "Install app" and offline lessons work from Live Server too).
 if ('serviceWorker' in navigator && !location.pathname.includes('/modern/')) navigator.serviceWorker.register('./service-worker.js');
+loadCodeIndex();
 loadContents().then(() => { updateProgress(); if (shouldGateForProfile()) renderGate(); else showHome(); }).catch(() => { app.innerHTML = `<p class="notice bad">${t('error.loadIndex')}</p>`; });

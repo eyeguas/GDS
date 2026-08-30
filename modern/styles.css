@@ -105,12 +105,26 @@ h2 { margin: 0; font-size: 22px; }
 .terminal { background: #061326; color: #d6f2ff; border-radius: 10px; padding: 18px; min-height: 86px; white-space: pre-wrap; overflow-x: auto; font: 14px/1.42 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .terminal-label { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 8px; color: #45627f; font-size: 11px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .terminal:empty { display: none; }
+/* On an explanation-only step, the exact part of the (possibly carried-over) system
+   display that the current text is talking about is picked out here. */
+.terminal mark.term-hl { background: #ffcf5c; color: #061326; padding: 0 2px; border-radius: 3px; font-weight: 700; }
 .instruction { font-size: 16px; line-height: 1.7; margin: 0 0 23px; }
 .instruction > * + * { margin-top: 20px; }
 /* A list needs more air from the sentence introducing it than plain paragraph-to-paragraph spacing. */
 .instruction > * + .instruction-list { margin-top: 30px; }
 .instruction p { margin: 0; }
 .instruction .kw { color: #0a4fb0; font-weight: 700; }
+/* A command code the lesson itself already defined earlier (kw-term) or a recognized
+   city/airport code (kw-place) gets a small icon and a tooltip with its meaning. */
+.instruction .kw-term, .instruction .kw-place { cursor: help; border-bottom: 1px dashed currentColor; }
+.instruction .kw-place { color: #0a7d5c; }
+.instruction .kw-icon { font-size: .75em; margin-right: 2px; opacity: .8; vertical-align: 1px; }
+/* Plain-English GDS terminology (not a command code) called out within a sentence. */
+.instruction mark.term-phrase { background: #fff1cf; color: inherit; padding: 0 2px; border-radius: 3px; }
+/* One small topic icon per paragraph or bullet, set beside the text rather than inline
+   with it, so it reads as a margin marker rather than clutter mid-sentence. */
+.instruction p.has-icon, .instruction-list li.has-icon { display: flex; gap: 9px; align-items: flex-start; }
+.para-icon { flex: none; font-size: 15px; line-height: 1.7; color: var(--blue); opacity: .85; }
 .instruction-kicker { color: var(--blue); font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .instruction-list { margin: 0; padding-left: 23px; display: grid; gap: 13px; line-height: 1.55; }
 .instruction-list li { padding-left: 5px; }
@@ -168,7 +182,13 @@ dialog input { width: 100%; padding: 13px; border: 1px solid var(--line); border
 .profile-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px; }
 .sidebar-close { display: none; }
 .sidebar-backdrop { display: none; }
-@media (max-width: 760px) {
+/* The 760px width breakpoint alone misses a phone rotated to landscape: its width can
+   exceed 760px while its height stays short, which used to fall back to the desktop
+   layout -- an always-visible sidebar eating a big share of an already-short screen.
+   The extra condition below catches that case (short + coarse-pointer + no hover) so
+   phones in landscape still get the collapsible drawer, without affecting a merely
+   narrow desktop window. */
+@media (max-width: 760px), ((max-height: 500px) and (hover: none) and (pointer: coarse)) {
   .app-shell { display: block; }
   /* z-index 5 keeps the drawer above the backdrop (4); #menu-button sits under both
      while the drawer is open, so closing it relies on the backdrop tap or the drawer's
