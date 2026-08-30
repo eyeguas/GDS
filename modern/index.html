@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="GDS Training" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>GDS Training</title>
-    <link rel="stylesheet" href="styles.css?v=32" />
+    <link rel="stylesheet" href="styles.css?v=33" />
   </head>
   <body>
     <div class="app-shell">
@@ -42,7 +42,10 @@
         <header class="topbar">
           <button id="menu-button" class="icon-button" data-i18n-attr="aria-label:sidebar.open" aria-label="Abrir menú">☰</button>
           <div id="breadcrumb" class="breadcrumb" data-i18n="nav.home">Inicio</div>
-          <button id="search-button" class="search-button"><span aria-hidden="true">⌕</span>&nbsp;<span data-i18n="search.open">Buscar una orden</span></button>
+          <div class="topbar-actions">
+            <button id="search-button" class="search-button"><span aria-hidden="true">⌕</span>&nbsp;<span data-i18n="search.open">Buscar una orden</span></button>
+            <button id="lookup-button" class="search-button"><span aria-hidden="true">⌗</span>&nbsp;<span data-i18n="lookup.open">Código rápido</span></button>
+          </div>
         </header>
         <div id="app" class="content" aria-live="polite"></div>
       </main>
@@ -57,6 +60,15 @@
       <input id="search-input" type="search" data-i18n-attr="placeholder:search.placeholder" placeholder="Ej.: disponibilidad, DAC, Bangkok…" autocomplete="off" />
       <div id="search-results" class="search-results"></div>
     </dialog>
+    <dialog id="lookup-dialog">
+      <form method="dialog" class="dialog-header">
+        <strong data-i18n="lookup.title">Código de ciudad o aeropuerto</strong>
+        <button class="icon-button" data-i18n-attr="aria-label:common.close" aria-label="Cerrar">×</button>
+      </form>
+      <p data-i18n="lookup.description">Escribe el nombre de una ciudad o un código de 3 letras para consultarlo, igual que harías con DAN o DAC.</p>
+      <input id="lookup-input" type="search" data-i18n-attr="placeholder:lookup.placeholder" placeholder="Ej.: Nice, NCE, Dubái…" autocomplete="off" />
+      <div id="lookup-results" class="search-results"></div>
+    </dialog>
     <dialog id="progress-dialog">
       <form method="dialog" class="dialog-header">
         <strong data-i18n="progress.dialogTitle">Resumen de progreso</strong>
@@ -66,6 +78,6 @@
     </dialog>
 
     <template id="notice-template"><div class="notice" role="status"></div></template>
-    <script src="app.js?v=32"></script>
+    <script src="app.js?v=33"></script>
   </body>
 </html>

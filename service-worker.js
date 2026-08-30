@@ -1,10 +1,10 @@
-const CACHE = 'gds-training-v32';
+const CACHE = 'gds-training-v33';
 // Some lessons continue across extra files (base, B, C); listing every possible
 // suffix here is safe because the install step below skips any that don't exist.
 const lessons = ['LSN', 'AM', 'Q'].flatMap(prefix => Array.from({ length: 40 }, (_, index) =>
   ['', 'B', 'C'].map(part => `./orion/GDS/${prefix}${index + 1}${part}.DAT`)
 )).flat();
-const essentials = ['./', './index.html', './manifest.webmanifest', './modern/styles.css', './modern/app.js', './modern/icon.svg', './modern/icons/icon-192.png', './modern/icons/icon-512.png', './modern/icons/apple-touch-icon.png', './modern/icons/favicon-32.png', './modern/assets/travel-training.svg', './orion/GDS/DIR.DSP'];
+const essentials = ['./', './index.html', './manifest.webmanifest', './modern/styles.css', './modern/app.js', './modern/icon.svg', './modern/icons/icon-192.png', './modern/icons/icon-512.png', './modern/icons/apple-touch-icon.png', './modern/icons/favicon-32.png', './modern/assets/travel-training.svg', './orion/GDS/DIR.DSP', './orion/GDS/AMCDE.DAT'];
 
 self.addEventListener('install', event => {
   // Fetch each file individually (rather than cache.addAll, which aborts entirely

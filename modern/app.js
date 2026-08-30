@@ -80,12 +80,16 @@ const crumb = document.querySelector('#breadcrumb');
 const searchDialog = document.querySelector('#search-dialog');
 const searchInput = document.querySelector('#search-input');
 const searchResults = document.querySelector('#search-results');
+const lookupDialog = document.querySelector('#lookup-dialog');
+const lookupInput = document.querySelector('#lookup-input');
+const lookupResults = document.querySelector('#lookup-results');
 const progressDialog = document.querySelector('#progress-dialog');
 const progressDetails = document.querySelector('#progress-details');
 let contents = [];
 let activeMode = null;
 let activeLesson = null;
 let searchIndex = null;
+let codeIndex = null;
 let session = null;
 
 // --- Interface translation (Spanish / English) --------------------------------------
@@ -116,6 +120,13 @@ const STRINGS = {
   'search.hint': { es: 'Escribe un término para buscar entre las órdenes de tus lecciones completadas.', en: 'Type a term to search the commands from your completed lessons.' },
   'search.empty': { es: 'Busca por ejemplo <strong>DAC</strong>, <strong>hotel</strong> o <strong>Bangkok</strong> en las lecciones superadas.', en: 'Search for example <strong>DAC</strong>, <strong>hotel</strong>, or <strong>Bangkok</strong> in your passed lessons.' },
   'search.noResults': { es: 'No se ha encontrado ninguna orden con esos términos.', en: 'No command was found matching those terms.' },
+  'lookup.open': { es: 'Código rápido', en: 'Quick code' },
+  'lookup.openTitle': { es: 'Consultar un código de ciudad o aeropuerto', en: 'Look up a city or airport code' },
+  'lookup.title': { es: 'Código de ciudad o aeropuerto', en: 'City or airport code' },
+  'lookup.description': { es: 'Escribe el nombre de una ciudad o un código de 3 letras para consultarlo, igual que harías con DAN o DAC.', en: 'Type a city name or a 3-letter code to look it up, just like you would with DAN or DAC.' },
+  'lookup.placeholder': { es: 'Ej.: Nice, NCE, Dubái…', en: 'E.g.: Nice, NCE, Dubai…' },
+  'lookup.hint': { es: 'Escribe para buscar.', en: 'Type to search.' },
+  'lookup.noResults': { es: 'No se ha encontrado ningún código con ese texto.', en: 'No code was found matching that text.' },
   'common.close': { es: 'Cerrar', en: 'Close' },
   'home.eyebrow': { es: 'Formación GDS', en: 'GDS Training' },
   'home.title': { es: 'Tu terminal de práctica, ahora en cualquier dispositivo.', en: 'Your practice terminal, now on every device.' },
@@ -248,6 +259,7 @@ function renderLangSwitch() {
 function refreshOpenDialogs() {
   if (progressDialog.open) renderProgressDetails();
   if (searchDialog.open) { if (searchIndex) renderSearch(searchInput.value); else searchResults.innerHTML = `<p class="loading">${t('search.preparing')}</p>`; }
+  if (lookupDialog.open) renderLookup(lookupInput.value);
 }
 function refreshCurrentView() {
   updateProgress();
@@ -683,7 +695,7 @@ function renderScreen() {
   const canGoBack = session.mode === 'classroom' || session.mode === 'agency';
   const backButton = canGoBack && session.index > 0 ? `<button class="secondary-button" id="back">${t('lesson.back')}</button>` : '';
   const continueControls = `<div class="stage-actions">${backButton}<span></span><button class="primary-button" id="continue">${t('lesson.continue')}</button></div>`;
-  const answerControls = `<div class="stage-actions">${backButton}<p class="hint">${t('lesson.hint')}</p><div class="answer-actions"><button class="solution-button" id="solution" title="${t('lesson.solutionTitle')}">S</button><button class="secondary-button" id="leave">${t('lesson.leave')}</button></div></div>`;
+  const answerControls = `<div class="stage-actions">${backButton}<p class="hint">${t('lesson.hint')}</p><div class="answer-actions"><button class="solution-button" id="lookup-quick" title="${t('lookup.openTitle')}">⌗</button><button class="solution-button" id="solution" title="${t('lesson.solutionTitle')}">S</button><button class="secondary-button" id="leave">${t('lesson.leave')}</button></div></div>`;
   app.innerHTML = `<article class="lesson-stage"><header class="stage-heading"><div><div class="eyebrow">${MODES[session.mode].label} · ${t('lesson.crumb', { number: session.number })}</div><h2>${escapeHtml(title)}</h2><p>${session.mode === 'review' ? t('lesson.question', { current: Math.min(session.index + 1, 10) }) : t('lessons.status.practice')}</p></div><div class="stage-heading-actions"><span class="step">${t('lesson.step', { current: session.index + 1, total: session.screens.length })}</span>${session.index > 0 ? `<button class="text-button" id="restart-lesson" title="${t('lesson.restartTitle')}">${t('lesson.restart')}</button>` : ''}</div></header><div class="lesson-body"><div class="lesson-main">${showResumeNotice ? `<p class="notice good">${t('lesson.resumeNotice', { step: session.index + 1 })}</p>` : ''}<pre class="terminal">${escapeHtml(terminal.join('\n'))}</pre><div class="instruction">${instructionHtml}</div>${isPager ? continueControls : answers.length ? `<form id="answer-form"><div class="command-row"><input id="command-input" aria-label="${t('lesson.answerLabel')}" placeholder="${t('lesson.answerPlaceholder')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus /><button class="primary-button">${t('lesson.check')}</button></div></form><div id="feedback"></div>${answerControls}` : continueControls}</div><div class="step-illustration theme-${theme.kind}" aria-hidden="true">${illustration}</div></div></article>`;
   const continueButton = document.querySelector('#continue');
   if (continueButton) continueButton.addEventListener('click', nextScreen);
@@ -701,6 +713,8 @@ function renderScreen() {
   });
   const solution = document.querySelector('#solution');
   if (solution) solution.addEventListener('click', () => showSolution(title, session.number, session.index + 1, answers));
+  const lookupQuick = document.querySelector('#lookup-quick');
+  if (lookupQuick) lookupQuick.addEventListener('click', openLookup);
   const form = document.querySelector('#answer-form');
   if (form) form.addEventListener('submit', event => { event.preventDefault(); submitAnswer(answers); });
   const stageTitle = document.querySelector('.stage-heading > div');
@@ -772,9 +786,63 @@ function renderSearch(query) {
   searchResults.innerHTML = matches.length ? matches.map(item => `<button class="search-result" data-mode="${item.mode}" data-lesson="${item.number}"><strong><code>${escapeHtml(item.command)}</code> · ${escapeHtml(item.title)}</strong><span>${escapeHtml(item.context.slice(0, 170))}</span></button>`).join('') : `<p class="loading">${t('search.noResults')}</p>`;
   searchResults.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { searchDialog.close(); startLesson(button.dataset.mode, Number(button.dataset.lesson)); }));
 }
+
+// --- Quick city/airport code lookup ---------------------------------------------------
+// The original DOS software could resolve a DAN/DAC lookup for any city or airport at any
+// moment, backed by a live reference table. That table — AMCDE.DAT, ~130 common cities
+// keyed by code — is still bundled under orion/GDS/ (never edited) but the modern reader
+// never fetched it, so a handful of exercises that name a less common city (Nice, Dubai…)
+// without ever showing its code left the student with no way to look it up themselves.
+// This restores that lookup as a small helper, reachable from the topbar and from inside
+// any exercise, by reading that same original file — no lesson content is duplicated here.
+// AMCDE.DAT only lists ~130 common cities and does not include this one, which a couple
+// of exercises still reference by its (now unusual) metropolitan-area code. Added here in
+// the app layer only, so the lookup tool can resolve it too, without touching the
+// original reference file.
+const EXTRA_CODES = [
+  { code: 'YMQ', info: 'MONTREAL/QC/CANADA (metropolitan-area code; the airport itself is YUL)' }
+];
+async function loadCodeIndex() {
+  if (codeIndex) return codeIndex;
+  const entries = [];
+  try {
+    const response = await fetch(`${SOURCE}AMCDE.DAT`);
+    if (response.ok) {
+      const matcher = /scr\("([^"]+)",90,"((?:\\.|[^"\\])*)"\)/g;
+      for (const match of (await response.text()).matchAll(matcher)) {
+        const code = match[1];
+        const value = decodeLegacy(match[2]);
+        // Each line repeats its own code and a one-letter type marker before the actual
+        // city/region/country text (e.g. "ABQ C  ALBUQUERQUE/NM/USA"); strip that prefix
+        // generically (by shape, not by re-matching the code) since a couple of rows in
+        // the original file have a typo'd leading code that no longer matches its own key.
+        const info = value.replace(/^\S+\s*[A-Z]?\s*/, '').trim();
+        entries.push({ code, info: info || value });
+      }
+    }
+  } catch (_) { /* Falls through to just the extra codes below. */ }
+  codeIndex = entries.concat(EXTRA_CODES);
+  return codeIndex;
+}
+async function openLookup() {
+  lookupDialog.showModal(); lookupInput.value = ''; lookupInput.focus(); lookupResults.innerHTML = `<p class="loading">${t('lookup.hint')}</p>`;
+  await loadCodeIndex();
+}
+function renderLookup(query) {
+  if (!query.trim()) { lookupResults.innerHTML = `<p class="loading">${t('lookup.hint')}</p>`; return; }
+  const term = normal(query);
+  const exact = codeIndex.filter(entry => entry.code === term.replace(/\s+/g, ''));
+  const byName = codeIndex.filter(entry => !exact.includes(entry) && entry.info.toUpperCase().includes(term));
+  const matches = [...exact, ...byName].slice(0, 12);
+  lookupResults.innerHTML = matches.length
+    ? matches.map(entry => `<div class="search-result"><strong><code>${escapeHtml(entry.code)}</code></strong><span>${escapeHtml(entry.info)}</span></div>`).join('')
+    : `<p class="loading">${t('lookup.noResults')}</p>`;
+}
 document.querySelector('#search-button').addEventListener('click', openSearch);
+document.querySelector('#lookup-button').addEventListener('click', openLookup);
 document.querySelector('#progress-button').addEventListener('click', openProgress);
 searchInput.addEventListener('input', event => { if (searchIndex) renderSearch(event.target.value); });
+lookupInput.addEventListener('input', event => { if (codeIndex) renderLookup(event.target.value); });
 // The mobile drawer used to be opened and closed by the same #menu-button toggle, but
 // once open the drawer's own z-index sits above the topbar and covers that button, so
 // there was no way left to dismiss it. It now closes via a close button inside the
