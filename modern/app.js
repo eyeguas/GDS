@@ -214,6 +214,7 @@ function refreshOpenDialogs() {
 }
 function refreshCurrentView() {
   renderNav();
+  updateProgress();
   if (session) renderScreen();
   else if (activeMode) showLessons(activeMode);
   else showHome();
@@ -531,6 +532,9 @@ function terminalForCurrentScreen() {
 function renderScreen() {
   const screen = currentScreen();
   if (!screen) return finishLesson();
+  // Re-set on every render (not just when the lesson is first opened) so a language
+  // switch made mid-lesson also updates the breadcrumb, not just the stage below it.
+  crumb.textContent = `${MODES[session.mode].label} · ${t('lesson.crumb', { number: session.number })}`;
   savePosition(session.mode, session.number, session.index);
   const showResumeNotice = Boolean(session.justResumed);
   session.justResumed = false;
