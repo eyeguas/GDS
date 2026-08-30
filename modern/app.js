@@ -333,7 +333,7 @@ async function loadLesson(mode, number) {
 }
 function renderNav() {
   nav.innerHTML = Object.entries(MODES).map(([id, mode]) => `<button data-mode="${id}" class="${activeMode === id ? 'active' : ''}"><span class="mode-icon">${mode.icon}</span>${mode.label}</button>`).join('');
-  nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => showLessons(button.dataset.mode)));
+  nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { showLessons(button.dataset.mode); closeSidebar(); }));
 }
 function showHome() {
   activeMode = null; activeLesson = null; session = null; renderNav(); crumb.textContent = 'Inicio';
@@ -489,7 +489,18 @@ function renderSearch(query) {
 document.querySelector('#search-button').addEventListener('click', openSearch);
 document.querySelector('#progress-button').addEventListener('click', openProgress);
 searchInput.addEventListener('input', event => { if (searchIndex) renderSearch(event.target.value); });
-document.querySelector('#menu-button').addEventListener('click', () => document.querySelector('.sidebar').classList.toggle('open'));
+// The mobile drawer used to be opened and closed by the same #menu-button toggle, but
+// once open the drawer's own z-index sits above the topbar and covers that button, so
+// there was no way left to dismiss it. It now closes via a close button inside the
+// drawer, via a tap on the dimmed backdrop behind it, or by picking a section from it.
+const sidebarEl = document.querySelector('.sidebar');
+const sidebarBackdrop = document.querySelector('#sidebar-backdrop');
+function openSidebar() { sidebarEl.classList.add('open'); sidebarBackdrop.classList.add('open'); }
+function closeSidebar() { sidebarEl.classList.remove('open'); sidebarBackdrop.classList.remove('open'); }
+document.querySelector('#menu-button').addEventListener('click', openSidebar);
+document.querySelector('#close-sidebar').addEventListener('click', closeSidebar);
+sidebarBackdrop.addEventListener('click', closeSidebar);
+document.querySelector('#progress-button').addEventListener('click', () => { closeSidebar(); });
 document.querySelector('#reset-progress').addEventListener('click', () => { if (confirm('¿Quieres borrar el progreso guardado en este dispositivo?')) { localStorage.removeItem('gds-training-progress'); localStorage.removeItem('gds-training-position'); updateProgress(); if (activeMode) showLessons(activeMode); else showHome(); } });
 // The service worker used to be disabled on localhost to dodge cache-testing headaches
 // during development; now that installability is the point, it registers everywhere

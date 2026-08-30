@@ -153,10 +153,18 @@ dialog input { width: 100%; padding: 13px; border: 1px solid var(--line); border
 .progress-detail small { margin-top: 3px; color: var(--muted); }
 .progress-detail > span:last-child { color: var(--blue); font-size: 14px; font-weight: 750; }
 .loading { color: var(--muted); padding: 40px 0; }
+.sidebar-close { display: none; }
+.sidebar-backdrop { display: none; }
 @media (max-width: 760px) {
   .app-shell { display: block; }
-  .sidebar { position: fixed; z-index: 3; inset: 0 auto 0 0; width: 272px; transform: translateX(-100%); transition: transform .2s; }
+  /* z-index 5 keeps the drawer above the backdrop (4); #menu-button sits under both
+     while the drawer is open, so closing it relies on the backdrop tap or the drawer's
+     own close button below, not on tapping the (hidden-behind-the-drawer) hamburger again. */
+  .sidebar { position: fixed; z-index: 5; inset: 0 auto 0 0; width: 272px; transform: translateX(-100%); transition: transform .2s; }
   .sidebar.open { transform: translateX(0); }
+  .sidebar-close { display: block; position: absolute; top: 22px; right: 14px; color: #fff; font-size: 26px; line-height: 1; padding: 4px 8px; }
+  .sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 4; background: rgba(4, 15, 31, .5); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
   #menu-button { display: block; margin-left: -8px; }
   .topbar { height: 62px; }
   .mode-grid { grid-template-columns: 1fr; }
