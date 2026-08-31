@@ -971,5 +971,24 @@ renderLangSwitch();
 // during development; now that installability is the point, it registers everywhere
 // (including localhost, so "Install app" and offline lessons work from Live Server too).
 if ('serviceWorker' in navigator && !location.pathname.includes('/modern/')) navigator.serviceWorker.register('./service-worker.js');
+
+// --- Anonymous install counting (GoatCounter) ---------------------------------------
+// Page views ("connections") are already counted by the count.js snippet in
+// index.html/modern/index.html; this only adds a separate "install" event, once per
+// device, since installing is not itself a page view. Chromium browsers fire a real
+// appinstalled event for it. iOS Safari never fires one at all -- the best available
+// signal there is the very first time the app is opened already running in standalone
+// (home-screen) mode, which can only happen after the student added it. No personal
+// data is involved: just a single anonymous count.
+function countInstall(label) {
+  if (localStorage.getItem('gds-training-install-counted')) return;
+  localStorage.setItem('gds-training-install-counted', '1');
+  if (window.goatcounter && window.goatcounter.count) {
+    window.goatcounter.count({ path: 'install', title: label, event: true });
+  }
+}
+window.addEventListener('appinstalled', () => countInstall('App installed (appinstalled event)'));
+const runningStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+if (runningStandalone) countInstall('App installed (first standalone launch)');
 loadCodeIndex();
 loadContents().then(() => { updateProgress(); if (shouldGateForProfile()) renderGate(); else showHome(); }).catch(() => { app.innerHTML = `<p class="notice bad">${t('error.loadIndex')}</p>`; });
