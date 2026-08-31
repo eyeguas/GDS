@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071a33" />
+    <meta name="description" content="A tour of GDS Training's study modes, progress tracking, search tools, and in-lesson reading aids." />
+    <link rel="icon" href="modern/icons/favicon-32.png" sizes="32x32" />
+    <title>Using GDS Training</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --navy:#071a33; --blue:#1b63d9; --sky:#eaf2ff; --ink:#142238;
+    --muted:#5c6b84; --line:#dce3ee; --paper:#ffffff; --amber:#b3690b;
+    --amber-bg:#fdf0dd; --good:#087443; --gold:#ffcf5c;
+    --surface:var(--paper); --surface-raised:#ffffff; --text:var(--ink);
+    --text-muted:var(--muted); --hairline:var(--line); --board:var(--navy);
+    --board-text:#eaf2ff; --board-line:#1f3a5f; --accent:var(--blue);
+    --accent-ink:#ffffff; --stub-hole:var(--sky);
+    --shadow: 0 1px 2px rgba(7,26,51,.04), 0 8px 24px rgba(7,26,51,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --surface:#0b1626; --surface-raised:#101f36; --text:#e7edf7;
+      --text-muted:#93a3bd; --hairline:#233a5c; --board:#040d1c;
+      --board-text:#dce9ff; --board-line:#1a2e4d; --sky:#0f2038;
+      --accent:#4f8fef; --accent-ink:#04101f; --stub-hole:#0b1626;
+      --amber:#e8a53d; --amber-bg:#2a2110; --good:#3fbf83; --gold:#e8a53d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --surface:#0b1626; --surface-raised:#101f36; --text:#e7edf7;
+    --text-muted:#93a3bd; --hairline:#233a5c; --board:#040d1c;
+    --board-text:#dce9ff; --board-line:#1a2e4d; --sky:#0f2038;
+    --accent:#4f8fef; --accent-ink:#04101f; --stub-hole:#0b1626;
+    --amber:#e8a53d; --amber-bg:#2a2110; --good:#3fbf83; --gold:#e8a53d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--surface); color:var(--text);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:"Big Shoulders Display",Inter,sans-serif; text-wrap:balance; letter-spacing:.01em; margin:0; }
+  code, .mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; }
+  a{ color:var(--accent); }
+  .wrap{ max-width:920px; margin:0 auto; padding:0 20px 80px; }
+
+  .board{ background:var(--board); color:var(--board-text); padding:40px 20px 28px; }
+  .board-inner{ max-width:920px; margin:0 auto; }
+  .board-eyebrow{ display:flex; align-items:center; gap:10px; font-family:"IBM Plex Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:#8fa8d6; margin-bottom:14px; }
+  .board-eyebrow .dot{ width:7px; height:7px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px rgba(8,116,67,.25); }
+  .board h1{ font-size:clamp(32px,6vw,50px); font-weight:900; line-height:1.02; }
+  .board h1 em{ font-style:normal; color:#7fb0ff; }
+  .board p.lead{ margin-top:14px; max-width:64ch; color:#c3d3ec; font-size:16px; }
+  .board .links{ display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+  .board .app-link{ display:inline-flex; align-items:center; gap:8px; padding:10px 16px; background:rgba(255,255,255,.08); border:1px solid var(--board-line); border-radius:8px; color:var(--board-text); text-decoration:none; font-size:14px; font-family:"IBM Plex Mono",monospace; }
+  .board .app-link:hover{ background:rgba(255,255,255,.14); }
+  .board .app-link svg{ width:14px; height:14px; }
+
+  .jump{ display:flex; flex-wrap:wrap; gap:8px; margin:-24px 0 40px; padding:10px; background:var(--surface-raised); border:1px solid var(--hairline); border-radius:12px; box-shadow:var(--shadow); }
+  .jump a{ flex:1 1 auto; text-align:center; min-width:130px; padding:10px 12px; border-radius:8px; color:var(--text-muted); text-decoration:none; font-weight:600; font-size:13.5px; }
+  .jump a:hover{ background:var(--sky); color:var(--accent); }
+
+  section.topic{ margin-bottom:56px; scroll-margin-top:24px; }
+  .topic-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:8px; }
+  .topic-number{ font-family:"IBM Plex Mono",monospace; color:var(--accent); font-size:14px; }
+  .topic-head h2{ font-size:28px; font-weight:800; }
+  .topic-intro{ color:var(--text-muted); max-width:68ch; margin:6px 0 22px; }
+
+  .mode-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .mode-card{ background:var(--surface-raised); border:1px solid var(--hairline); border-radius:12px; padding:20px; box-shadow:var(--shadow); }
+  .mode-card .glyph{ width:40px; height:40px; border-radius:9px; background:var(--sky); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:19px; margin-bottom:12px; }
+  .mode-card h3{ font-size:19px; font-weight:800; margin-bottom:6px; }
+  .mode-card p{ margin:0; color:var(--text-muted); font-size:14px; }
+
+  .theme-grid{ margin-top:18px; display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
+  .theme-chip{ display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--hairline); border-radius:8px; background:var(--surface-raised); font-size:13px; }
+  .theme-chip .g{ color:var(--accent); font-family:"IBM Plex Mono",monospace; }
+
+  .feature{ position:relative; background:var(--surface-raised); border:1px solid var(--hairline); border-radius:10px; padding:18px 20px 18px 64px; margin-bottom:14px; box-shadow:var(--shadow); }
+  .feature + .feature{ margin-top:-1px; }
+  .feature::before{ content:attr(data-glyph); position:absolute; left:0; top:0; bottom:0; width:46px; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--accent); background:var(--sky); border-right:2px dashed var(--hairline); border-radius:10px 0 0 10px; }
+  .feature::after{ content:""; position:absolute; left:40px; top:-7px; width:14px; height:14px; border-radius:50%; background:var(--stub-hole); border:1px solid var(--hairline); }
+  .feature h4{ margin:0 0 4px; font-size:16px; font-weight:750; color:var(--text); }
+  .feature p{ margin:0; color:var(--text-muted); font-size:14.5px; }
+  .feature .key{ display:inline-block; padding:1px 7px; border:1px solid var(--hairline); border-radius:5px; font-family:"IBM Plex Mono",monospace; font-size:12.5px; background:var(--sky); color:var(--accent); }
+
+  .preview-line{ font-family:"IBM Plex Mono",monospace; font-size:13.5px; background:var(--board); color:var(--board-text); border-radius:8px; padding:12px 14px; margin:16px 0; overflow-x:auto; white-space:pre; }
+  .preview-line mark{ background:var(--gold); color:var(--board); padding:0 2px; border-radius:3px; font-weight:700; }
+  .swatch-row{ display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 4px; }
+  .swatch{ display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--hairline); border-radius:8px; background:var(--surface-raised); font-size:13.5px; }
+  .swatch .dot{ width:14px; height:14px; border-radius:4px; flex:none; }
+  .swatch .dot.icon{ background:var(--sky); }
+  .swatch .dot.phrase{ background:#fff1cf; border:1px solid var(--amber); }
+  .swatch .dot.term{ background:var(--sky); border-bottom:2px dashed var(--accent); border-radius:2px; }
+  .swatch .dot.screen{ background:var(--gold); }
+
+  .tip{ display:flex; gap:12px; padding:14px 18px; border-radius:10px; margin:18px 0; background:var(--sky); border:1px solid var(--hairline); }
+  .tip .mark{ flex:none; color:var(--good); font-weight:800; font-family:"IBM Plex Mono",monospace; }
+  .tip p{ margin:0; font-size:14.5px; color:var(--text); }
+  .callout{ display:flex; gap:12px; padding:16px 18px; border-radius:10px; margin:18px 0; background:var(--amber-bg); border:1px solid color-mix(in srgb, var(--amber) 35%, transparent); }
+  .callout .mark{ flex:none; width:26px; height:26px; border-radius:50%; background:var(--amber); color:#fff; display:flex; align-items:center; justify-content:center; font-family:"IBM Plex Mono",monospace; font-weight:700; font-size:14px; }
+  .callout strong{ display:block; color:var(--text); margin-bottom:3px; }
+  .callout p{ margin:0; color:var(--text-muted); font-size:14.5px; }
+
+  footer{ margin-top:56px; padding-top:24px; border-top:1px solid var(--hairline); color:var(--text-muted); font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  footer a{ color:var(--text-muted); }
+
+  @media (max-width:700px){ .mode-grid{ grid-template-columns:1fr; } .feature{ padding-left:56px; } .feature::before{ width:40px; font-size:16px; } .feature::after{ left:34px; } }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+  </head>
+  <body>
+<div class="board">
+  <div class="board-inner">
+    <div class="board-eyebrow"><span class="dot"></span> GDS TRAINING &middot; FLIGHT DECK BRIEFING</div>
+    <h1>Getting the most out of <em>GDS Training</em></h1>
+    <p class="lead">A quick tour of how the app is organized — the three ways to study, how your progress is tracked, the built-in search and code tools, and the reading aids that highlight what each lesson is teaching as you go.</p>
+    <div class="links">
+      <a class="app-link" href="https://eyeguas.github.io/GDS/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Open the app</a>
+      <a class="app-link" href="https://eyeguas.github.io/GDS/install-en.html" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Installation guide</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="jump" aria-label="Jump to a section">
+    <a href="#modes">Study modes</a>
+    <a href="#progress">Progress &amp; profile</a>
+    <a href="#search">Search &amp; codes</a>
+    <a href="#reading">Reading aids</a>
+    <a href="#offline">Offline &amp; updates</a>
+  </nav>
+
+  <section class="topic" id="modes">
+    <div class="topic-head"><span class="topic-number">01</span><h2>Three ways to study</h2></div>
+    <p class="topic-intro">Every lesson exists in three modes, all covering the same 40 numbered lessons — 120 lessons tracked in total.</p>
+    <div class="mode-grid">
+      <div class="mode-card"><div class="glyph">◫</div><h3>Classroom</h3><p>Learn each operation step by step, with explanation and guided practice screen by screen.</p></div>
+      <div class="mode-card"><div class="glyph">⌘</div><h3>Agency</h3><p>Practice realistic agency scenarios in a guided terminal, once the basics are familiar.</p></div>
+      <div class="mode-card"><div class="glyph">✓</div><h3>Review</h3><p>Test your knowledge with 10 questions per lesson — no explanations, just the exercise.</p></div>
+    </div>
+    <p class="topic-intro" style="margin-top:22px;">The 40 lessons are grouped into 10 topics, shown as a category tag on every lesson card:</p>
+    <div class="theme-grid">
+      <div class="theme-chip"><span class="g">✈</span>Availability</div>
+      <div class="theme-chip"><span class="g">✦</span>Selling</div>
+      <div class="theme-chip"><span class="g">◫</span>PNR</div>
+      <div class="theme-chip"><span class="g">⊕</span>Optional elements</div>
+      <div class="theme-chip"><span class="g">↻</span>PNR operations</div>
+      <div class="theme-chip"><span class="g">◇</span>Fares</div>
+      <div class="theme-chip"><span class="g">€</span>Pricing</div>
+      <div class="theme-chip"><span class="g">⚙</span>Utils</div>
+      <div class="theme-chip"><span class="g">⌂</span>Hotels</div>
+      <div class="theme-chip"><span class="g">▱</span>Cars and miscellaneous</div>
+    </div>
+  </section>
+
+  <section class="topic" id="progress">
+    <div class="topic-head"><span class="topic-number">02</span><h2>Progress, profile and your report</h2></div>
+    <p class="topic-intro">Everything is tracked locally, on the device you're using — nothing is sent to a server.</p>
+    <div class="feature" data-glyph="1"><h4>Your student profile</h4><p>The first time you open the app you're asked for your name, ID/passport, and university email. It's saved only on this device, used to label your progress report, and locked afterwards — resetting your progress offers to update it.</p></div>
+    <div class="feature" data-glyph="2"><h4>The progress card</h4><p>The sidebar always shows how many of the 120 lessons you've completed, with a progress bar. Tap it to open a per-mode breakdown.</p></div>
+    <div class="feature" data-glyph="3"><h4><span class="key">View report</span></h4><p>From that same breakdown, generates a printable, downloadable page listing every lesson you've passed per mode — handy to hand to an instructor or keep for yourself.</p></div>
+    <div class="feature" data-glyph="4"><h4><span class="key">Reset progress</span></h4><p>Erases everything saved on this device: completed lessons and your saved position in any lesson in progress. This cannot be undone.</p></div>
+  </section>
+
+  <section class="topic" id="search">
+    <div class="topic-head"><span class="topic-number">03</span><h2>Search and quick codes</h2></div>
+    <p class="topic-intro">Two lightweight tools live in the top bar, and both work from anywhere in the app.</p>
+    <div class="feature" data-glyph="⌕"><h4>Search a command</h4><p>Looks through the commands from lessons you've already completed — by command, code, or concept. It's a recap tool for what you've studied, not a shortcut past it.</p></div>
+    <div class="feature" data-glyph="⌗"><h4>Quick code</h4><p>Type a city or airport name, or a 3-letter code, to look it up — the same reference a real agent checks with <code>DAN</code> or <code>DAC</code>. It's also available inside every exercise, right next to the answer box.</p></div>
+  </section>
+
+  <section class="topic" id="reading">
+    <div class="topic-head"><span class="topic-number">04</span><h2>Reading aids inside every lesson</h2></div>
+    <p class="topic-intro">A few small visual cues make each screen faster to read, without changing a single word of the original lesson content.</p>
+    <div class="swatch-row">
+      <div class="swatch"><span class="dot icon"></span>Topic icon beside a line</div>
+      <div class="swatch"><span class="dot phrase"></span>GDS terminology, highlighted</div>
+      <div class="swatch"><span class="dot term"></span>Code with a tooltip on hover</div>
+      <div class="swatch"><span class="dot screen"></span>What's being explained, lit up on screen</div>
+    </div>
+    <div class="feature" data-glyph="◆"><h4>Codes that explain themselves</h4><p>A code the lesson already defined earlier — or a recognized city/airport code — gets a dashed underline. Hover it (or tap it on a phone) and its meaning shows up right there.</p>
+      <div class="preview-line">01 <mark>BHPX3M</mark>                  1534 B  @  S01JUN  31OCT  - 14   3M M</div>
+    </div>
+    <div class="feature" data-glyph="⊕"><h4>What the screen is showing you</h4><p>On a step that's pure explanation — nothing to type — the exact part of the system display being talked about is highlighted, even if that display was produced by an earlier step.</p></div>
+  </section>
+
+  <section class="topic" id="offline">
+    <div class="topic-head"><span class="topic-number">05</span><h2>Offline and updates</h2></div>
+    <p class="topic-intro">Once installed, GDS Training works with no connection at all, and checks quietly for updates whenever it's opened online.</p>
+    <div class="tip"><span class="mark">✓</span><p>For install steps on your phone, tablet, or computer, and what to do if an update seems stuck, see the separate <a href="https://eyeguas.github.io/GDS/install-en.html" target="_blank" rel="noopener">installation and update guide</a>.</p></div>
+    <div class="callout"><span class="mark">!</span><div><strong>One thing worth knowing:</strong><p>Clearing your browser's site data for GDS Training — as opposed to just closing and reopening it — erases your saved progress, language choice, and profile on that device.</p></div></div>
+  </section>
+
+  <footer>
+    <span>GDS Training &middot; usage guide</span>
+    <a href="https://eyeguas.github.io/GDS/" target="_blank" rel="noopener">Open the app →</a>
+  </footer>
+</div>
+  </body>
+</html>
