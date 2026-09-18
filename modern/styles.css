@@ -16,8 +16,9 @@
 body { margin: 0; min-width: 320px; }
 button, input { font: inherit; }
 button { cursor: pointer; }
-.app-shell { min-height: 100vh; display: grid; grid-template-columns: 272px minmax(0, 1fr); }
-.sidebar { background: var(--navy); color: #fff; padding: 28px 18px; display: flex; flex-direction: column; gap: 28px; }
+.app-shell { min-height: 100vh; }
+.sidebar { position: fixed; z-index: 5; inset: 0 auto 0 0; width: 272px; transform: translateX(-100%); transition: transform .2s; background: var(--navy); color: #fff; padding: 28px 18px; display: flex; flex-direction: column; gap: 28px; }
+.sidebar.open { transform: translateX(0); }
 .brand { color: #fff; text-decoration: none; font-size: 19px; line-height: 1.05; display: flex; align-items: center; gap: 11px; padding: 0 8px; }
 .brand small { font-size: 13px; color: #a8c6fa; letter-spacing: .05em; }
 .brand-mark { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 12px; background: #fff; color: var(--blue); font-weight: 800; font-size: 23px; }
@@ -43,7 +44,7 @@ main { min-width: 0; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 .search-button, .secondary-button { padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: #29415f; font-size: 14px; }
 .icon-button { border: 0; background: transparent; font-size: 23px; color: #37506e; }
-#menu-button { display: none; }
+#menu-button { display: block; margin-left: -8px; }
 .content { max-width: 1160px; margin: 0 auto; padding: clamp(30px, 5vw, 66px); }
 .home-hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(270px, .85fr); gap: clamp(26px, 5vw, 70px); align-items: center; }
 .home-hero > img { width: 100%; max-width: 470px; justify-self: end; filter: drop-shadow(0 18px 30px rgba(9, 48, 103, .16)); }
@@ -125,6 +126,10 @@ h2 { margin: 0; font-size: 22px; }
    with it, so it reads as a margin marker rather than clutter mid-sentence. */
 .instruction p.has-icon, .instruction-list li.has-icon { display: flex; gap: 9px; align-items: flex-start; }
 .para-icon { flex: none; font-size: 15px; line-height: 1.7; color: var(--blue); opacity: .85; }
+/* The text itself is a real flex item (not a bare text node) so it can shrink and wrap
+   normally inside the row -- without this, a long sentence keeps its full unwrapped
+   width and gets sliced off by .lesson-stage's overflow:hidden instead of wrapping. */
+.para-text { flex: 1 1 auto; min-width: 0; }
 .instruction-kicker { color: var(--blue); font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
 .instruction-list { margin: 0; padding-left: 23px; display: grid; gap: 13px; line-height: 1.55; }
 .instruction-list li { padding-left: 5px; }
@@ -180,8 +185,12 @@ dialog input { width: 100%; padding: 13px; border: 1px solid var(--line); border
 .profile-form input { padding: 11px 13px; border: 1px solid #aab9cc; border-radius: 8px; font: inherit; font-weight: 400; color: var(--ink); }
 .profile-form input:focus { outline: 3px solid #cce1ff; border-color: var(--blue); }
 .profile-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px; }
-.sidebar-close { display: none; }
-.sidebar-backdrop { display: none; }
+/* z-index 5 keeps the drawer above the backdrop (4); #menu-button sits under both
+   while the drawer is open, so closing it relies on the backdrop tap or the drawer's
+   own close button below, not on tapping the (hidden-behind-the-drawer) hamburger again. */
+.sidebar-close { display: block; position: absolute; top: 22px; right: 14px; color: #fff; font-size: 26px; line-height: 1; padding: 4px 8px; }
+.sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 4; background: rgba(4, 15, 31, .5); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
 /* The 760px width breakpoint alone misses a phone rotated to landscape: its width can
    exceed 760px while its height stays short, which used to fall back to the desktop
    layout -- an always-visible sidebar eating a big share of an already-short screen.
@@ -189,16 +198,6 @@ dialog input { width: 100%; padding: 13px; border: 1px solid var(--line); border
    phones in landscape still get the collapsible drawer, without affecting a merely
    narrow desktop window. */
 @media (max-width: 760px), ((max-height: 500px) and (hover: none) and (pointer: coarse)) {
-  .app-shell { display: block; }
-  /* z-index 5 keeps the drawer above the backdrop (4); #menu-button sits under both
-     while the drawer is open, so closing it relies on the backdrop tap or the drawer's
-     own close button below, not on tapping the (hidden-behind-the-drawer) hamburger again. */
-  .sidebar { position: fixed; z-index: 5; inset: 0 auto 0 0; width: 272px; transform: translateX(-100%); transition: transform .2s; }
-  .sidebar.open { transform: translateX(0); }
-  .sidebar-close { display: block; position: absolute; top: 22px; right: 14px; color: #fff; font-size: 26px; line-height: 1; padding: 4px 8px; }
-  .sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 4; background: rgba(4, 15, 31, .5); opacity: 0; pointer-events: none; transition: opacity .2s; }
-  .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
-  #menu-button { display: block; margin-left: -8px; }
   .topbar { height: 62px; }
   /* The topbar has less room on a phone; the code-lookup button keeps just its icon
      there so it doesn't crowd out the search button or the breadcrumb text. */

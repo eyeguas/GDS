@@ -604,11 +604,11 @@ function renderInstructionBlock(block) {
   switch (block.kind) {
     case 'prose': {
       const icon = pickInlineIcon(block.text);
-      return `<p class="${icon ? 'has-icon' : ''}">${iconSpan(icon)}${boldKeywords(highlightDomainTerms(escapeHtml(block.text.trim())))}</p>`;
+      return `<p class="${icon ? 'has-icon' : ''}">${iconSpan(icon)}<span class="para-text">${boldKeywords(highlightDomainTerms(escapeHtml(block.text.trim())))}</span></p>`;
     }
     case 'bullet': {
       const compact = block.items.length >= 4 && block.items.every(i => i.length <= 60) ? ' columns' : '';
-      return `<ul class="instruction-list${compact}">${block.items.map(i => { const icon = pickInlineIcon(i); return `<li class="${icon ? 'has-icon' : ''}">${iconSpan(icon)}${boldKeywords(highlightDomainTerms(escapeHtml(i)))}</li>`; }).join('')}</ul>`;
+      return `<ul class="instruction-list${compact}">${block.items.map(i => { const icon = pickInlineIcon(i); return `<li class="${icon ? 'has-icon' : ''}">${iconSpan(icon)}<span class="para-text">${boldKeywords(highlightDomainTerms(escapeHtml(i)))}</span></li>`; }).join('')}</ul>`;
     }
     case 'definition':
       return `<dl class="instruction-legend">${block.pairs.map(p => `<div class="legend-row"><dt>${escapeHtml(p.code)}</dt><dd>${boldKeywords(highlightDomainTerms(escapeHtml(p.desc)))}</dd></div>`).join('')}</dl>`;
@@ -678,7 +678,14 @@ async function loadContents() {
 // keyed by mode, lesson number, file part ('' = base, 'B', 'C'…) and the DAT's own
 // internal screen id.
 const ANSWER_FIXES = {
-  'classroom-14--9': ['OSIB 1CHD AGED 9/P3']
+  'classroom-14--9': ['OSIB 1CHD AGED 9/P3'],
+  // This lesson's own earlier screens (id 1, 2, 4) accept every equivalent way to write
+  // an on-the-hour AM time -- 24h, hour-only, and the short/long AM-suffix forms -- for
+  // the exact same 0900 value. Screen 8 asks for that identical time but the source
+  // only lists the 24h form, so a student typing e.g. 9A or 900A (as the lesson itself
+  // teaches is valid) would be marked wrong. Extending the accepted answers to match
+  // the lesson's own established pattern, without touching the original .DAT.
+  'agency-2--8': ['AN22MARFRABRU0900', 'AN22MARFRABRU09', 'AN22MARFRABRU9A', 'AN22MARFRABRU900A']
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
