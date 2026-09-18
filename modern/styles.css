@@ -90,10 +90,10 @@ h2 { margin: 0; font-size: 22px; }
 .stage-heading-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
 .stage-heading-actions .text-button { color: #5c7699; font-size: 12.5px; white-space: nowrap; }
 .stage-heading-actions .text-button:hover { color: var(--blue); text-decoration: underline; }
-.lesson-body { padding: 29px; display: grid; grid-template-columns: minmax(0, 1fr) 168px; gap: 26px; align-items: start; }
+.lesson-body { padding: 29px; }
 .lesson-main { min-width: 0; }
-.step-illustration { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 12px; border-radius: 14px; background: var(--sky); color: var(--blue); }
-.step-illustration svg { width: 100%; max-width: 128px; height: auto; }
+.step-illustration { float: right; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin: 0 0 14px 16px; border-radius: 13px; background: var(--sky); color: var(--blue); }
+.step-illustration svg { width: 60%; max-width: 40px; height: auto; }
 .step-illustration.theme-selling { color: #007d72; background: #e2f7f3; }
 .step-illustration.theme-pnr { color: #7652be; background: #f0ebfd; }
 .step-illustration.theme-optional { color: #a44888; background: #fbeaf6; }
@@ -208,8 +208,7 @@ dialog input { width: 100%; padding: 13px; border: 1px solid var(--line); border
   .home-hero > img { order: -1; max-width: 340px; justify-self: center; }
   .lesson-top, .stage-heading { align-items: flex-start; flex-direction: column; }
   .lesson-body, .stage-heading { padding: 22px; }
-  .lesson-body { grid-template-columns: 1fr; }
-  .step-illustration { flex-direction: row; justify-content: flex-start; }
-  .step-illustration svg { max-width: 64px; }
+  .step-illustration { width: 44px; height: 44px; margin: 0 0 12px 12px; }
+  .step-illustration svg { max-width: 30px; }
   .instruction-list.columns { grid-template-columns: 1fr; }
 }
