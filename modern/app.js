@@ -743,12 +743,24 @@ async function startLesson(mode, number) {
 }
 function currentScreen() { return session.screens[session.index]; }
 function usefulAnswers(screen) { return screen.answers.filter(answer => normalAnswer(answer) !== 'PD'); }
+// A bare "IGNORED" is the terminal's one-line acknowledgement of the IG command --
+// meaningful only as direct feedback for the step that triggered it. The lesson
+// data never re-captures the terminal afterward, so left alone it would keep
+// showing on every later step regardless of what that step is actually about --
+// most confusingly right before the *next* "Ignore the transaction." prompt,
+// where it already reads IGNORED as if that one had happened too. Treating it as
+// ephemeral (shown for exactly the one step, then cleared) matches how an actual
+// terminal would behave once a new, uncaptured command supersedes it.
+function isEphemeralConfirmation(output) {
+  return output.length === 1 && output[0].trim().toUpperCase() === 'IGNORED';
+}
 function terminalForCurrentScreen() {
   let terminal = [];
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
-    // CLS is executed after the contents of its screen have been read.
-    if (index > 0 && session.screens[index - 1].clear) terminal = [];
+    // CLS is executed after the contents of its screen have been read, and so is a
+    // one-off confirmation message once the step that produced it is behind us.
+    if (index > 0 && (session.screens[index - 1].clear || isEphemeralConfirmation(session.screens[index - 1].output))) terminal = [];
     // A new system response replaces the previous terminal display.
     if (screen.output.length) {
       // Type 12 is a layout marker in the legacy player, not the visible header.
