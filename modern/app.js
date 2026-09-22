@@ -706,7 +706,18 @@ const ANSWER_FIXES = {
   // passengers share the phone); the /P1-2 and /P1,2 forms it also teaches remain
   // accepted alongside it.
   'classroom-9-B-2': ['APMAD 01 3841983-B/P2'],
-  'classroom-9-B-3': ['APLON 01 4622243-H', 'APLON 01 4622243-H/P1-2', 'APLON 01 4622243-H/P1,2']
+  'classroom-9-B-3': ['APLON 01 4622243-H', 'APLON 01 4622243-H/P1-2', 'APLON 01 4622243-H/P1,2'],
+  // Agency lesson 9 has the exact same phoneless-AP bug as its Classroom counterpart
+  // above, in its own worked examples ("Enter the following Paris business telephone
+  // number: 64726532." -> recorded answer was just "APPAR -B").
+  'agency-9--1': ['APPAR 64726532-B'],
+  'agency-9--2': ['APPAR 41550938-H'],
+  'agency-9--4': ['APFRA 069 332182-B'],
+  'agency-9--5': ['APFRA 069 226822-H'],
+  'agency-9--8': ['APLON 0181 3407254-B'],
+  'agency-9--9': ['APLON 0181 2361004-H'],
+  'agency-9--12': ['APBCN 93 6651400-B'],
+  'agency-9--13': ['APBCN 93 6251151-H/P1']
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
