@@ -744,6 +744,24 @@ function applyAnswerFix(mode, number, part, screen) {
   if (fix) screen.answers = fix;
   return screen;
 }
+// A handful of original .DAT screens state a wrong number in their own instructional
+// wording -- a data-entry mistake in the source material, not something the modern
+// player introduces. The original, read-only .DAT files are never edited, so those are
+// corrected here instead: each entry is a list of [wrong text, corrected text] pairs
+// applied to that screen's instructional lines, keyed the same way as ANSWER_FIXES.
+const TEXT_FIXES = {
+  // Classroom lesson 5 sells 3 seats (SS3D2, confirmed as HK3 in the segment itself)
+  // but its own explanation of that status code claims "4 seats are now confirmed" --
+  // off by one against the very HK3 it is explaining.
+  'classroom-5-B-2': [
+    ['HK3^ indicates that 4 seats are now confirmed.', 'HK3^ indicates that 3 seats are now confirmed.'],
+  ],
+};
+function applyTextFix(mode, number, part, screen) {
+  const fixes = TEXT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
+  if (fixes) screen.text = screen.text.map(line => fixes.reduce((acc, [from, to]) => acc.split(from).join(to), line));
+  return screen;
+}
 async function loadLesson(mode, number) {
   // Some lessons are split by the original DOS engine across several files
   // (base, B, C, …), each one a self-contained continuation of the previous.
@@ -755,7 +773,7 @@ async function loadLesson(mode, number) {
       if (part === '') throw new Error(t('lesson.loadError', { number }));
       break;
     }
-    const parsed = parseLesson(await response.text()).map(screen => applyAnswerFix(mode, number, part, screen));
+    const parsed = parseLesson(await response.text()).map(screen => applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, screen)));
     screens = screens.concat(parsed);
   }
   return screens;
