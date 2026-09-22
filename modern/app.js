@@ -685,7 +685,28 @@ const ANSWER_FIXES = {
   // only lists the 24h form, so a student typing e.g. 9A or 900A (as the lesson itself
   // teaches is valid) would be marked wrong. Extending the accepted answers to match
   // the lesson's own established pattern, without touching the original .DAT.
-  'agency-2--8': ['AN22MARFRABRU0900', 'AN22MARFRABRU09', 'AN22MARFRABRU9A', 'AN22MARFRABRU900A']
+  'agency-2--8': ['AN22MARFRABRU0900', 'AN22MARFRABRU09', 'AN22MARFRABRU9A', 'AN22MARFRABRU900A'],
+  // Classroom lesson 9 (CONTACT ELEMENT) teaches the AP command with a worked example
+  // that always states a real phone number and says "Input this entry." -- but the
+  // accepted answer recorded for each of these screens only ever kept the city and
+  // location code (e.g. "APLON -B"), dropping the phone number itself. A student who
+  // correctly follows the instruction and types the number, exactly as taught, would
+  // be marked wrong. Restoring the phone number from each screen's own instructional
+  // text, in the exact same digit grouping the lesson uses when it states the number.
+  'classroom-9--1': ['APLON 61698484-B'],
+  'classroom-9--2': ['APLON 44572672-H'],
+  'classroom-9--5': ['APDUB 03 3442923-B'],
+  'classroom-9--6': ['APDUB 03 3713543-H'],
+  'classroom-9--9': ['APMUC 069 373745-B'],
+  'classroom-9--10': ['APMUC 069 470292-H'],
+  'classroom-9--13': ['APPAR 45678322-H/P1'],
+  'classroom-9--14': ['APPAR 44726531-H/P2'],
+  // Second file of the same lesson (LSN9B.DAT). The bare form is listed first since
+  // the lesson itself says passenger association "may be omitted" here (both
+  // passengers share the phone); the /P1-2 and /P1,2 forms it also teaches remain
+  // accepted alongside it.
+  'classroom-9-B-2': ['APMAD 01 3841983-B/P2'],
+  'classroom-9-B-3': ['APLON 01 4622243-H', 'APLON 01 4622243-H/P1-2', 'APLON 01 4622243-H/P1,2']
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -794,6 +815,38 @@ function buildNmPnrDisplay(command) {
   const passengers = parseNmCommand(command);
   return passengers.map((passenger, index) => `  ${index + 1}.${passenger.surname}/${passenger.detail}`);
 }
+// The same gap exists for AP (contact phone) entries: several lessons ask for one and
+// never capture a system response, leaving whatever was on screen before (often a
+// stale, unrelated display) in place. Where a screen's accepted answer already states
+// the full command with a real phone number, synthesize the contact-element line the
+// terminal would actually show, in the same "<n> AP <city> <phone>-<code>[/Pn]" style
+// already used by real captured responses elsewhere in the curriculum (e.g.
+// "4 AP MEX 01 4345721-B"). This only fires once an answer actually carries digits, so
+// a lesson whose recorded answer is still missing its phone number (a data gap in the
+// original .DAT, corrected case by case via ANSWER_FIXES) is left alone rather than
+// synthesizing a display with no phone number in it.
+function parseApCommand(command) {
+  const body = command.trim().toUpperCase();
+  const match = /^AP([A-Z]{3,4})\s*([\d][\d\s]*\d|\d)\s*-\s*([A-Z])(?:\/(P[\d,-]+))?$/.exec(body);
+  if (!match) return null;
+  return { city: match[1], phone: match[2].replace(/\s+/g, ' ').trim(), code: match[3], assoc: match[4] || null };
+}
+function canonicalApAnswer(answers) {
+  // Parsing (rather than a loose "contains a digit somewhere" check) matters here: an
+  // answer like "APBCN -H/P1" contains a digit too, but only in its passenger
+  // association suffix -- it is exactly the phoneless bug this feature must not
+  // paper over. Only a phone number of a real, dialable length counts.
+  for (const answer of answers) {
+    const parsed = parseApCommand(answer);
+    if (parsed && parsed.phone.replace(/\D/g, '').length >= 5) return answer;
+  }
+  return null;
+}
+function buildApContactDisplay(command) {
+  const parsed = parseApCommand(command);
+  if (!parsed) return [];
+  return [`  1 AP ${parsed.city} ${parsed.phone}-${parsed.code}${parsed.assoc ? '/' + parsed.assoc : ''}`];
+}
 function terminalForCurrentScreen() {
   let terminal = [];
   for (let index = 0; index <= session.index; index += 1) {
@@ -811,7 +864,9 @@ function terminalForCurrentScreen() {
         : screen.output;
     } else if (previous) {
       const nmAnswer = canonicalNmAnswer(previous.answers);
+      const apAnswer = canonicalApAnswer(previous.answers);
       if (nmAnswer) terminal = buildNmPnrDisplay(nmAnswer);
+      else if (apAnswer) terminal = buildApContactDisplay(apAnswer);
     }
   }
   return terminal;
