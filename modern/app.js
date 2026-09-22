@@ -754,13 +754,54 @@ function usefulAnswers(screen) { return screen.answers.filter(answer => normalAn
 function isEphemeralConfirmation(output) {
   return output.length === 1 && output[0].trim().toUpperCase() === 'IGNORED';
 }
+// Several lessons ask for an NM (name) entry and then never capture what the
+// terminal looked like afterward -- the next captured screen is often the next
+// unrelated instruction (or another "Ignore the transaction." prompt) with no
+// system response for the NM in between. Rather than leave that gap blank,
+// synthesize the name element NM itself would produce, so the step right after
+// an NM entry shows the passengers actually just added -- e.g. the same
+// "1.SMITH/C MR" style the lessons already use for a real name element -- and
+// ignoring afterward reads as ignoring that populated screen, not a void.
+function canonicalNmAnswer(answers) {
+  // The lesson data lists compact and fully spaced-out forms in no fixed order;
+  // the longest accepted variant is reliably the fullest given name(s) with
+  // proper spacing, since padding characters only ever make a valid answer longer.
+  let best = null;
+  for (const answer of answers) {
+    if (/^NM\d/.test(answer.trim().toUpperCase()) && (!best || answer.length > best.length)) best = answer;
+  }
+  return best;
+}
+function parseNmCommand(command) {
+  const body = command.trim().toUpperCase().replace(/^NM/, '');
+  // Protect a "/" inside parentheses -- e.g. (INF/REBECA) -- before splitting the
+  // command into passengers, so the infant reference isn't torn apart.
+  const protectedBody = body.replace(/\([^)]*\)/g, match => match.replace(/\//g, '\u0000'));
+  // NM concatenates one or more "<count><SURNAME>/<passenger>/<passenger>..." groups
+  // with no separator between groups, so a new group is recognized by a digit
+  // immediately followed by letters and a slash (e.g. "...MR1SAVICEVIC/...").
+  const groupRe = /(\d+)([A-Z]+)\/((?:(?!\d+[A-Z]+\/).)*)/g;
+  const passengers = [];
+  let match;
+  while ((match = groupRe.exec(protectedBody))) {
+    const surname = match[2];
+    const pieces = match[3].split('/').map(piece => piece.trim()).filter(Boolean);
+    for (const piece of pieces) passengers.push({ surname, detail: piece.replace(/\u0000/g, '/') });
+  }
+  return passengers;
+}
+function buildNmPnrDisplay(command) {
+  const passengers = parseNmCommand(command);
+  return passengers.map((passenger, index) => `  ${index + 1}.${passenger.surname}/${passenger.detail}`);
+}
 function terminalForCurrentScreen() {
   let terminal = [];
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
+    const previous = index > 0 ? session.screens[index - 1] : null;
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us.
-    if (index > 0 && (session.screens[index - 1].clear || isEphemeralConfirmation(session.screens[index - 1].output))) terminal = [];
+    if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) terminal = [];
     // A new system response replaces the previous terminal display.
     if (screen.output.length) {
       // Type 12 is a layout marker in the legacy player, not the visible header.
@@ -768,6 +809,9 @@ function terminalForCurrentScreen() {
       terminal = screen.hasSegmentDetail && !screen.output.some(line => /^RP\//.test(line.trim()))
         ? ['RP/FRALH0999/', ...screen.output]
         : screen.output;
+    } else if (previous) {
+      const nmAnswer = canonicalNmAnswer(previous.answers);
+      if (nmAnswer) terminal = buildNmPnrDisplay(nmAnswer);
     }
   }
   return terminal;
