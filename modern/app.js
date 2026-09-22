@@ -717,7 +717,27 @@ const ANSWER_FIXES = {
   'agency-9--8': ['APLON 0181 3407254-B'],
   'agency-9--9': ['APLON 0181 2361004-H'],
   'agency-9--12': ['APBCN 93 6651400-B'],
-  'agency-9--13': ['APBCN 93 6251151-H/P1']
+  'agency-9--13': ['APBCN 93 6251151-H/P1'],
+  // The same phoneless-AP bug recurs across the rest of the Agency and Classroom
+  // curriculum. Restoring the real numbers from each screen's own instructional text.
+  'agency-10--10': ['APFRA 069 223 774-B'],
+  'agency-11--9': ['APBRU 02 2364201-B/P1'],
+  'agency-11--10': ['APBRU 02 3313221-H'],
+  'agency-12--6': ['APMAD 01 622 6520-B'],
+  'agency-12--7': ['APMAD 01 245 7692-H'],
+  'agency-13--10': ['APPAR 47 62 31 88-B/P1'],
+  'agency-13--11': ['APPAR 61 34 07 74-H'],
+  'agency-14--10': ['APAMS 020 228166-B', 'APAMS 020 228166-B/P1'],
+  'agency-14--11': ['APAMS 020 232010-H'],
+  'agency-15--11': ['APFRA 069 2302882-B'],
+  'agency-15--12': ['APFRA 069 638430-H'],
+  'classroom-10-B-2': ['APCHI 02 5312636-B'],
+  'classroom-10-B-3': ['APCHI 02 5478172-H'],
+  'classroom-11--15': ['APLON 45 31268765-H'],
+  'classroom-12--4': ['APROM 069 230858-B'],
+  'classroom-12--5': ['APROM 069 223774-H'],
+  'classroom-12-B-2': ['APAUH 069 464574-B', 'APAUH 069 464574-B/P1'],
+  'classroom-12-B-3': ['APAUH 069 422533-H', 'APAUH 069 422533-H/P1-2', 'APAUH 069 422533-H/P1,2']
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
