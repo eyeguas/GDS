@@ -842,9 +842,9 @@ function parseNmCommand(command) {
   }
   return passengers;
 }
-function buildNmPnrDisplay(command) {
+function buildNmPnrDisplay(command, startCount = 0) {
   const passengers = parseNmCommand(command);
-  return passengers.map((passenger, index) => `  ${index + 1}.${passenger.surname}/${passenger.detail}`);
+  return passengers.map((passenger, index) => `  ${startCount + index + 1}.${passenger.surname}/${passenger.detail}`);
 }
 // The same gap exists for AP (contact phone) entries: several lessons ask for one and
 // never capture a system response, leaving whatever was on screen before (often a
@@ -873,31 +873,44 @@ function canonicalApAnswer(answers) {
   }
   return null;
 }
-function buildApContactDisplay(command) {
+function buildApContactDisplay(command, startCount = 0) {
   const parsed = parseApCommand(command);
   if (!parsed) return [];
-  return [`  1 AP ${parsed.city} ${parsed.phone}-${parsed.code}${parsed.assoc ? '/' + parsed.assoc : ''}`];
+  return [`  ${startCount + 1} AP ${parsed.city} ${parsed.phone}-${parsed.code}${parsed.assoc ? '/' + parsed.assoc : ''}`];
 }
 function terminalForCurrentScreen() {
   let terminal = [];
+  // How many synthesized PNR items (name lines, contact lines) are already on screen
+  // since the last reset -- a real PNR keeps every element visible side by side (name,
+  // then each contact phone as its own numbered line) until the transaction is
+  // ignored or ended, rather than each new entry wiping out the one before it.
+  let itemCount = 0;
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
     const previous = index > 0 ? session.screens[index - 1] : null;
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us.
-    if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) terminal = [];
-    // A new system response replaces the previous terminal display.
+    if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) { terminal = []; itemCount = 0; }
+    // A new REAL system response replaces the previous terminal display outright --
+    // it already reflects the complete state at that point, so synthesized numbering
+    // starts over after it rather than stacking on top of a line count it doesn't own.
     if (screen.output.length) {
       // Type 12 is a layout marker in the legacy player, not the visible header.
       // The DOS terminal supplies this standard PNR header for compact segment displays.
       terminal = screen.hasSegmentDetail && !screen.output.some(line => /^RP\//.test(line.trim()))
         ? ['RP/FRALH0999/', ...screen.output]
         : screen.output;
+      itemCount = 0;
     } else if (previous) {
       const nmAnswer = canonicalNmAnswer(previous.answers);
       const apAnswer = canonicalApAnswer(previous.answers);
-      if (nmAnswer) terminal = buildNmPnrDisplay(nmAnswer);
-      else if (apAnswer) terminal = buildApContactDisplay(apAnswer);
+      let newLines = null;
+      if (nmAnswer) newLines = buildNmPnrDisplay(nmAnswer, itemCount);
+      else if (apAnswer) newLines = buildApContactDisplay(apAnswer, itemCount);
+      if (newLines && newLines.length) {
+        terminal = terminal.concat(newLines);
+        itemCount += newLines.length;
+      }
     }
   }
   return terminal;
