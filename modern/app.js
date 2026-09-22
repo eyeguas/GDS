@@ -879,41 +879,65 @@ function buildApContactDisplay(command, startCount = 0) {
   return [`  ${startCount + 1} AP ${parsed.city} ${parsed.phone}-${parsed.code}${parsed.assoc ? '/' + parsed.assoc : ''}`];
 }
 function terminalForCurrentScreen() {
-  let terminal = [];
-  // How many synthesized PNR items (name lines, contact lines) are already on screen
-  // since the last reset -- a real PNR keeps every element visible side by side (name,
-  // then each contact phone as its own numbered line) until the transaction is
-  // ignored or ended, rather than each new entry wiping out the one before it.
+  // A real PNR keeps every element visible side by side -- name(s), then the segment(s),
+  // then each contact phone as its own numbered line -- until the transaction is ignored
+  // or ended. Some lessons (e.g. LSN9B) also replay the SAME real segment line on every
+  // step while the student is still adding names/contacts, so name/contact synthesis and
+  // "does this step carry a real captured segment" have to be tracked independently
+  // instead of one flat terminal that a real segment screen would otherwise wipe clean.
+  let nameLines = [];
+  let apLines = [];
+  let segmentLines = [];
+  let plainTerminal = null; // a fully authentic, complete captured screen -- wins outright
   let itemCount = 0;
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
     const previous = index > 0 ? session.screens[index - 1] : null;
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us.
-    if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) { terminal = []; itemCount = 0; }
-    // A new REAL system response replaces the previous terminal display outright --
-    // it already reflects the complete state at that point, so synthesized numbering
-    // starts over after it rather than stacking on top of a line count it doesn't own.
-    if (screen.output.length) {
-      // Type 12 is a layout marker in the legacy player, not the visible header.
-      // The DOS terminal supplies this standard PNR header for compact segment displays.
-      terminal = screen.hasSegmentDetail && !screen.output.some(line => /^RP\//.test(line.trim()))
-        ? ['RP/FRALH0999/', ...screen.output]
-        : screen.output;
-      itemCount = 0;
-    } else if (previous) {
+    if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) {
+      nameLines = []; apLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
+    }
+    // Accumulate synthesized name/contact lines from the PREVIOUS step's accepted answer
+    // unconditionally -- even when the CURRENT screen also carries its own real output
+    // (a bare repeated segment fragment), so entered names/contacts are never dropped.
+    if (previous) {
       const nmAnswer = canonicalNmAnswer(previous.answers);
       const apAnswer = canonicalApAnswer(previous.answers);
-      let newLines = null;
-      if (nmAnswer) newLines = buildNmPnrDisplay(nmAnswer, itemCount);
-      else if (apAnswer) newLines = buildApContactDisplay(apAnswer, itemCount);
-      if (newLines && newLines.length) {
-        terminal = terminal.concat(newLines);
-        itemCount += newLines.length;
+      if (nmAnswer) {
+        const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
+        if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
+      } else if (apAnswer) {
+        const newLines = buildApContactDisplay(apAnswer, itemCount);
+        if (newLines.length) { apLines = apLines.concat(newLines); itemCount += newLines.length; }
       }
     }
+    if (screen.output.length) {
+      // Type 12 is a layout marker in the legacy player, not the visible header.
+      const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
+      if (screen.hasSegmentDetail && !hasOwnHeader) {
+        // A bare segment fragment (no RP/ header of its own): this is the itinerary line,
+        // not a complete captured state -- replace just the segment slot (the source data
+        // already carries however many segment lines are current) and keep accumulating
+        // names/contacts around it.
+        segmentLines = screen.output;
+        plainTerminal = null;
+      } else {
+        // A fully authentic, complete captured screen (has its own header, or carries no
+        // segment at all) already reflects everything at this point -- it wins outright,
+        // and synthesized state starts fresh after it.
+        plainTerminal = screen.output;
+        nameLines = []; apLines = []; segmentLines = []; itemCount = 0;
+      }
+    } else {
+      // No real output this step: a plain synthesized display (from names/contacts alone,
+      // or nothing yet) is in effect again.
+      plainTerminal = null;
+    }
   }
-  return terminal;
+  if (plainTerminal !== null) return plainTerminal;
+  if (segmentLines.length) return ['RP/FRALH0999/', ...nameLines, ...segmentLines, ...apLines];
+  return [...nameLines, ...apLines];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
