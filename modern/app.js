@@ -921,6 +921,58 @@ function buildTkArrangementDisplay(command, startCount = 0) {
   if (!parsed) return [];
   return [`  ${startCount + 1} TK ${parsed.code}${parsed.date}${parsed.office ? '/' + parsed.office : ''}`];
 }
+// A line already carrying its own PNR item number can appear a second time later in the
+// SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
+// echo it again, apparently for its own internal highlighting, not as a second visible
+// line). Stripping any leading "N." / "N " item-number prefix and normalizing whitespace
+// lets a numbered line and its bare echo compare as identical text.
+function normalizePnrLine(line) {
+  return line.trim().replace(/^\d+[.\s]*/, '').trim().replace(/\s+/g, ' ');
+}
+// Which kind of PNR element a numbered captured line represents, so a real capture's own
+// items can be redistributed into the same name/segment/contact/ticketing layers that
+// synthesized lines use -- returns null for anything not itself a numbered item (the RP/
+// header, or a bare unnumbered echo of one).
+function classifyNumberedLine(line) {
+  const trimmed = line.trim();
+  if (/^\d+\.\S/.test(trimmed)) return 'name';
+  if (/^\d+\s+AP\s/i.test(trimmed)) return 'ap';
+  if (/^\d+\s+TK\s/i.test(trimmed)) return 'tk';
+  if (/^\d+\s+\S/.test(trimmed)) return 'segment';
+  return null;
+}
+// A screen whose own captured output carries a real "RP/.../ " header is a fully authentic,
+// numbered PNR snapshot -- pull its header and each numbered item out (dropping the bare,
+// unnumbered echoes of those same items elsewhere in the same output) so later synthesis
+// can keep numbering from exactly where this real capture left off.
+function extractPnrCapture(output) {
+  const header = output.find(line => /^RP\//.test(line.trim())) || null;
+  const nameLines = [], segmentLines = [], apLines = [], tkLines = [];
+  const numberedSoFar = new Set();
+  let maxItem = 0;
+  for (const line of output) {
+    if (/^RP\//.test(line.trim())) continue;
+    const kind = classifyNumberedLine(line);
+    if (kind) {
+      const match = /^(\d+)/.exec(line.trim());
+      if (match) maxItem = Math.max(maxItem, Number(match[1]));
+      numberedSoFar.add(normalizePnrLine(line));
+      if (kind === 'name') nameLines.push(line);
+      else if (kind === 'ap') apLines.push(line);
+      else if (kind === 'tk') tkLines.push(line);
+      else segmentLines.push(line);
+      continue;
+    }
+    // Not itself a numbered item. That's only safe to drop when it's a bare duplicate of
+    // an item already captured above (the type-6/8 tail-echo pattern) -- anything else
+    // (an unnumbered name, a multi-line remark's own continuation text, a nested numbered
+    // footnote inside a longer element...) means this screen's structure is richer than
+    // this simple classifier can safely redistribute. Rather than risk silently dropping
+    // real content, bail out and let the caller show the whole capture verbatim instead.
+    if (!numberedSoFar.has(normalizePnrLine(line))) return null;
+  }
+  return { header, nameLines, segmentLines, apLines, tkLines, itemCount: maxItem };
+}
 function terminalForCurrentScreen() {
   // A real PNR keeps every element visible side by side -- name(s), then the segment(s),
   // then each contact phone as its own numbered line -- until the transaction is ignored
@@ -928,11 +980,12 @@ function terminalForCurrentScreen() {
   // step while the student is still adding names/contacts, so name/contact synthesis and
   // "does this step carry a real captured segment" have to be tracked independently
   // instead of one flat terminal that a real segment screen would otherwise wipe clean.
+  let header = null; // the real captured "RP/.../ " header text, once one has been seen
   let nameLines = [];
   let apLines = [];
   let tkLines = [];
   let segmentLines = [];
-  let plainTerminal = null; // a fully authentic, complete captured screen -- wins outright
+  let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
@@ -940,12 +993,14 @@ function terminalForCurrentScreen() {
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us.
     if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) {
-      nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
+      header = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
     }
     // Accumulate synthesized name/contact/ticketing lines from the PREVIOUS step's
     // accepted answer unconditionally -- even when the CURRENT screen also carries its
     // own real output (a bare repeated segment fragment), so entered names, contacts and
-    // ticketing arrangements are never dropped.
+    // ticketing arrangements are never dropped. itemCount already reflects any real,
+    // numbered items a prior captured screen established, so a synthesized line always
+    // continues that same numbering rather than restarting it.
     if (previous) {
       const nmAnswer = canonicalNmAnswer(previous.answers);
       const apAnswer = canonicalApAnswer(previous.answers);
@@ -962,21 +1017,41 @@ function terminalForCurrentScreen() {
       }
     }
     if (screen.output.length) {
-      // Type 12 is a layout marker in the legacy player, not the visible header.
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
-      if (screen.hasSegmentDetail && !hasOwnHeader) {
-        // A bare segment fragment (no RP/ header of its own): this is the itinerary line,
-        // not a complete captured state -- replace just the segment slot (the source data
-        // already carries however many segment lines are current) and keep accumulating
-        // names/contacts/ticketing around it.
-        segmentLines = screen.output;
+      if (hasOwnHeader) {
+        // A fresh, fully authentic numbered PNR snapshot -- the new ground truth. Its own
+        // numbered items (and their exact numbers) replace whatever was tracked before,
+        // unless its structure is too rich to safely redistribute (extractPnrCapture
+        // returns null), in which case it is shown exactly as captured instead.
+        const capture = extractPnrCapture(screen.output);
+        if (capture) {
+          header = capture.header;
+          nameLines = capture.nameLines; segmentLines = capture.segmentLines;
+          apLines = capture.apLines; tkLines = capture.tkLines;
+          itemCount = capture.itemCount;
+          plainTerminal = null;
+        } else {
+          plainTerminal = screen.output;
+          header = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+        }
+      } else if (screen.hasSegmentDetail) {
+        // A bare, unnumbered fragment. If every one of its lines already matches an item
+        // already known (typically the same fragment echoed again after a real numbered
+        // capture, or after a previous bare occurrence of it), it adds nothing new -- keep
+        // showing the already-numbered items exactly as they are, numbers included, rather
+        // than replacing them with this unnumbered echo. Only genuinely new content (no
+        // established base yet, e.g. LSN9B/LSN10's very first segment line) is shown, and
+        // -- matching the original .DAT's own lack of a number for it -- uncounted.
+        const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines].map(normalizePnrLine));
+        const newLines = screen.output.filter(line => !known.has(normalizePnrLine(line)));
+        if (newLines.length) segmentLines = newLines;
         plainTerminal = null;
       } else {
-        // A fully authentic, complete captured screen (has its own header, or carries no
-        // segment at all) already reflects everything at this point -- it wins outright,
+        // A fully authentic screen unrelated to any PNR (availability list, "IGNORED",
+        // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+        header = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
       }
     } else {
       // No real output this step: a plain synthesized display (from names/contacts/
@@ -986,8 +1061,11 @@ function terminalForCurrentScreen() {
   }
   if (plainTerminal !== null) return plainTerminal;
   // Canonical PNR order: header, name(s), segment(s), contact(s), ticketing element(s) --
-  // matching real captured examples (e.g. AM13.DAT: name, segments, AP, then TK last).
-  if (segmentLines.length) return ['RP/FRALH0999/', ...nameLines, ...segmentLines, ...apLines, ...tkLines];
+  // matching real captured examples (e.g. AM13.DAT: name, segments, AP, then TK last). A
+  // header shows whenever one was actually captured, or (matching the previously shipped
+  // behavior for lessons that never capture one) whenever an uncounted segment fragment is
+  // being shown and needs one synthesized for it.
+  if (header || segmentLines.length) return [header || 'RP/FRALH0999/', ...nameLines, ...segmentLines, ...apLines, ...tkLines];
   return [...nameLines, ...apLines, ...tkLines];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
