@@ -859,6 +859,22 @@ function applyScreenSplits(mode, number, part, screens) {
   }
   return result;
 }
+// Screens that should show no carried-over terminal at all, keyed the same way as
+// ANSWER_FIXES/TEXT_FIXES. Reuses the same reset the engine already gives a real type-9
+// CLEAR/CLS/END marker (see terminalForCurrentScreen's "screen.clear || screen.end" check) --
+// so this only ever applies to screens that have no real captured output of their own.
+const SCREEN_CLEAR_FIXES = new Set([
+  // Classroom lesson 12, part B, screen id 7: "Which entry is used to ignore the transaction
+  // and remove the PNR from the work area?" -- a pure terminology review question (like the
+  // ER/ET questions right before and after it), with no real system effect of its own. The
+  // still-accumulated PNR display from before ending the transaction (screen id 6) has no
+  // reason to keep showing here.
+  'classroom-12-B-7',
+]);
+function applyClearFix(mode, number, part, screen) {
+  if (!SCREEN_CLEAR_FIXES.has(`${mode}-${number}-${part}-${screen.id}`)) return screen;
+  return { ...screen, clear: true };
+}
 async function loadLesson(mode, number) {
   // Some lessons are split by the original DOS engine across several files
   // (base, B, C, …), each one a self-contained continuation of the previous.
@@ -870,7 +886,7 @@ async function loadLesson(mode, number) {
       if (part === '') throw new Error(t('lesson.loadError', { number }));
       break;
     }
-    const parsed = parseLesson(await response.text()).map(screen => applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, screen)));
+    const parsed = parseLesson(await response.text()).map(screen => applyClearFix(mode, number, part, applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, screen))));
     screens = screens.concat(applyScreenSplits(mode, number, part, parsed));
   }
   return screens;
@@ -920,6 +936,14 @@ function usefulAnswers(screen) { return screen.answers.filter(answer => normalAn
 // terminal would behave once a new, uncaptured command supersedes it.
 function isEphemeralConfirmation(output) {
   return output.length === 1 && output[0].trim().toUpperCase() === 'IGNORED';
+}
+// A real system confirmation banner for ending a transaction (e.g. "END OF TRANSACTION
+// COMPLETE - GHC5YU"), as opposed to a numbered PNR fragment -- used to recognize this one
+// line among an otherwise-already-known bare echo (see terminalForCurrentScreen's
+// hasSegmentDetail branch) so it can be shown right after the header instead of wherever a
+// superseded segment fragment used to sit.
+function isTransactionBanner(line) {
+  return /^END OF TRANSACTION/i.test(line.trim());
 }
 // Several lessons ask for an NM (name) entry and then never capture what the
 // terminal looked like afterward -- the next captured screen is often the next
@@ -1116,6 +1140,7 @@ function terminalForCurrentScreen() {
   // instead of one flat terminal that a real segment screen would otherwise wipe clean.
   let header = null; // the real captured "RP/.../ " header text, once one has been seen
   let rfLine = null; // the synthesized received-from line, shown right after the header
+  let noticeLine = null; // a real one-line transaction-status banner (e.g. END OF TRANSACTION), shown right after the header
   let nameLines = [];
   let apLines = [];
   let tkLines = [];
@@ -1131,7 +1156,7 @@ function terminalForCurrentScreen() {
     // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
     // catches those too, so synthesized state resets there just the same.
     if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
-      header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
     }
     // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
     // step's accepted answer unconditionally -- even when the CURRENT screen also carries
@@ -1169,7 +1194,7 @@ function terminalForCurrentScreen() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -1182,14 +1207,14 @@ function terminalForCurrentScreen() {
         // it disappears once the transaction moves on), so it is cleared here too.
         const capture = extractPnrCapture(screen.output);
         if (capture) {
-          header = capture.header; rfLine = null;
+          header = capture.header; rfLine = null; noticeLine = null;
           nameLines = capture.nameLines; segmentLines = capture.segmentLines;
           apLines = capture.apLines; tkLines = capture.tkLines;
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
           plainTerminal = screen.output;
-          header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
         }
       } else if (screen.hasSegmentDetail) {
         // A bare, unnumbered fragment. If every one of its lines already matches an item
@@ -1201,14 +1226,27 @@ function terminalForCurrentScreen() {
         // -- matching the original .DAT's own lack of a number for it -- uncounted.
         const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines].map(normalizePnrLine));
         const newLines = screen.output.filter(line => !known.has(normalizePnrLine(line)));
-        if (newLines.length) segmentLines = newLines;
+        if (newLines.length === 1 && isTransactionBanner(newLines[0])) {
+          // A real one-line transaction-status confirmation (e.g. "END OF TRANSACTION
+          // COMPLETE - <locator>") bundled in the same screen as older, already-known
+          // segment/seat-map fragments (LSN12: the .DAT lists the still-echoed itinerary
+          // BEFORE the confirmation line). It supersedes that itinerary display -- a real
+          // system wouldn't redisplay it once the transaction is confirmed -- and, being
+          // the direct response to the command that was just entered, belongs right after
+          // the header, not buried where the now-superseded segment used to sit.
+          noticeLine = newLines[0];
+          segmentLines = [];
+        } else if (newLines.length) {
+          segmentLines = newLines;
+          noticeLine = null;
+        }
         plainTerminal = null;
       } else {
         // A fully authentic screen unrelated to any PNR (availability list, "IGNORED",
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
       }
     } else {
       // No real output this step: a plain synthesized display (from names/contacts/
@@ -1228,8 +1266,9 @@ function terminalForCurrentScreen() {
   // lessons teach the RF entry before any PNR context exists at all, and inventing a
   // header there would show a PNR that was never actually started.
   const rfPart = rfLine ? [rfLine] : [];
-  if (header || segmentLines.length) return [header || 'RP/FRALH0999/', ...rfPart, ...nameLines, ...segmentLines, ...apLines, ...tkLines];
-  return [...rfPart, ...nameLines, ...apLines, ...tkLines];
+  const noticePart = noticeLine ? [noticeLine] : [];
+  if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...apLines, ...tkLines];
+  return [...rfPart, ...noticePart, ...nameLines, ...apLines, ...tkLines];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
