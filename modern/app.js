@@ -766,6 +766,12 @@ const ANSWER_FIXES = {
   // "RFP^" shorthand for -- but the recorded answer is the bare "RF", missing the "P" that
   // marks it as received from the passenger.
   'classroom-11--10': ['RFP'],
+  // Screen id 17 ("The reservation was received from Mr. Thomas.") only recorded "RFP" --
+  // valid since Mr. Thomas is the PNR's own passenger, but incomplete: the lesson's own
+  // convention (screens id 1 and 4) is that naming the requester explicitly ("RF^<name>")
+  // is always an accepted alternative to the shorthand whenever that person really is the
+  // passenger, so the named form belongs here too, not just the shorthand.
+  'classroom-11--17': ['RFP', 'RFMRTHOMAS', 'RF MRTHOMAS'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
