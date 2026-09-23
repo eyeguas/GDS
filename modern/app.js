@@ -778,6 +778,11 @@ const ANSWER_FIXES = {
   // alternative when that person really is the passenger) means the named form belongs
   // here too, not just the shorthand.
   'agency-11--1': ['RFP', 'RFMRSCARLATTI', 'RF MRSCARLATTI'],
+  // Agency lesson 11, screen id 12 (the RF entry step the app shows as "step 13"): Mr.
+  // Moureaux is one of the PNR's own two passengers (Paul and Anne Moureaux, screen id 8),
+  // so the shorthand "RFP" is valid, but per the lesson's own convention the named form is
+  // always an accepted alternative when that person really is the passenger.
+  'agency-11--12': ['RFP', 'RFMRMOUREAUX', 'RF MRMOUREAUX'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
