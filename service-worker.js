@@ -1,4 +1,4 @@
-const CACHE = 'gds-training-v48';
+const CACHE = 'gds-training-v49';
 // Some lessons continue across extra files (base, B, C); listing every possible
 // suffix here is safe because the install step below skips any that don't exist.
 const lessons = ['LSN', 'AM', 'Q'].flatMap(prefix => Array.from({ length: 40 }, (_, index) =>

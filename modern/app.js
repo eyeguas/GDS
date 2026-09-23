@@ -755,6 +755,12 @@ const ANSWER_FIXES = {
   // that "received from Mr. Brown" (a named third party, not the PNR's own passenger)
   // only accepts the spelled-out name, matching the example actually shown here.
   'classroom-11--1': ['RFMRBROWN', 'RF MRBROWN'],
+  // Screen id 7 of the same lesson has the identical problem: its own text says "Assume the
+  // passenger's ASSISTANT, Mr. Martial, requested the reservation" -- Martial is explicitly
+  // not the passenger, so "RFP" (received from the passenger) does not apply here any more
+  // than it did for Brown. The named form is what the review quiz (Q11.DAT) requires for
+  // exactly this situation (a third party who is not the PNR's own passenger).
+  'classroom-11--7': ['RFMRMARTIAL', 'RF MRMARTIAL'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
