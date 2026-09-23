@@ -762,6 +762,49 @@ function applyTextFix(mode, number, part, screen) {
   if (fixes) screen.text = screen.text.map(line => fixes.reduce((acc, [from, to]) => acc.split(from).join(to), line));
   return screen;
 }
+// A couple of screens in Classroom lesson 7 tell the student, in their own instructional
+// wording, to "Input MPAN^ to redisplay the availability display" before booking -- but
+// the lesson's own accepted-answer field only ever recorded the booking command itself, so
+// MPAN was never actually required, and the availability display it's meant to bring back
+// was never shown again either. Splitting each of these into the two real steps its own
+// wording already describes: a first step that asks for and validates MPAN and, once
+// entered, shows exactly the availability display that was last on screen (matching what a
+// real MPAN redisplay would produce); then a second step, continuing with the original
+// booking instruction and accepted answer exactly as before. Keyed the same way as
+// ANSWER_FIXES/TEXT_FIXES.
+const SCREEN_SPLITS = {
+  'classroom-7--3': {
+    firstText: [
+      'The status HL^ indicates a waitlisted flight segment. An alternative reservation should be booked to ensure that the passenger has a confirmed booking for his departure.',
+      'Input MPAN^ to redisplay the availability display.',
+    ],
+    firstAnswers: ['MPAN'],
+    redisplayFrom: 2,
+    secondText: ['Then book 1 seat in K class on the flight in line 1.'],
+  },
+  'classroom-7--7': {
+    firstText: ['Input MPAN^ to redisplay the availability display.'],
+    firstAnswers: ['MPAN'],
+    redisplayFrom: 6,
+    secondText: ['Then book a confirmed reservation for 2 seats in S class on the flight in line 2.'],
+  },
+};
+function applyScreenSplits(mode, number, part, screens) {
+  const result = [];
+  for (const screen of screens) {
+    const config = SCREEN_SPLITS[`${mode}-${number}-${part}-${screen.id}`];
+    if (!config) { result.push(screen); continue; }
+    const source = screens.find(candidate => candidate.id === config.redisplayFrom);
+    result.push({ ...screen, text: config.firstText, answers: config.firstAnswers });
+    result.push({
+      ...screen,
+      text: config.secondText,
+      output: source ? source.output.slice() : [],
+      hasSegmentDetail: false,
+    });
+  }
+  return result;
+}
 async function loadLesson(mode, number) {
   // Some lessons are split by the original DOS engine across several files
   // (base, B, C, …), each one a self-contained continuation of the previous.
@@ -774,7 +817,7 @@ async function loadLesson(mode, number) {
       break;
     }
     const parsed = parseLesson(await response.text()).map(screen => applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, screen)));
-    screens = screens.concat(parsed);
+    screens = screens.concat(applyScreenSplits(mode, number, part, parsed));
   }
   return screens;
 }
