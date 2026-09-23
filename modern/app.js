@@ -737,7 +737,18 @@ const ANSWER_FIXES = {
   'classroom-12--4': ['APROM 069 230858-B'],
   'classroom-12--5': ['APROM 069 223774-H'],
   'classroom-12-B-2': ['APAUH 069 464574-B', 'APAUH 069 464574-B/P1'],
-  'classroom-12-B-3': ['APAUH 069 422533-H', 'APAUH 069 422533-H/P1-2', 'APAUH 069 422533-H/P1,2']
+  'classroom-12-B-3': ['APAUH 069 422533-H', 'APAUH 069 422533-H/P1-2', 'APAUH 069 422533-H/P1,2'],
+  // Classroom lesson 11 introduces the RF^<name> syntax with the worked example
+  // "RF^MRBROWN" ("This entry indicates that Mr. Brown requested the service."), but the
+  // recorded answer was "RFP" -- the shorthand for "received from the passenger", which
+  // this screen never establishes (no name element exists yet at this point in the
+  // lesson, and Brown is introduced only as the person who requested the service, not as
+  // a passenger). The lesson's own later screen (id 4) confirms the pattern this screen
+  // should follow: it shows "RFP^" and its recorded answer is "RFP" -- example and answer
+  // match exactly. The review quiz for this same lesson (Q11.DAT) independently confirms
+  // that "received from Mr. Brown" (a named third party, not the PNR's own passenger)
+  // only accepts the spelled-out name, matching the example actually shown here.
+  'classroom-11--1': ['RFMRBROWN', 'RF MRBROWN'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -755,6 +766,15 @@ const TEXT_FIXES = {
   // off by one against the very HK3 it is explaining.
   'classroom-5-B-2': [
     ['HK3^ indicates that 4 seats are now confirmed.', 'HK3^ indicates that 3 seats are now confirmed.'],
+  ],
+  // Classroom lesson 11's RF^ example screen says "Input this entry." twice, with an
+  // unrelated formatting note wedged in between -- reading as if two separate orders were
+  // being requested, when only one entry (the RF^MRBROWN example) is ever shown. Dropping
+  // the first, premature "Input this entry." so the instruction appears only once, right
+  // after the note that actually belongs before it.
+  'classroom-11--1': [
+    ['This entry indicates that Mr. Brown requested the service. Input this', 'This entry indicates that Mr. Brown requested the service.'],
+    ['entry. Note that the text does not include any spaces. If a space is input,', 'Note that the text does not include any spaces. If a space is input,'],
   ],
 };
 function applyTextFix(mode, number, part, screen) {
