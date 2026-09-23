@@ -783,6 +783,11 @@ const ANSWER_FIXES = {
   // so the shorthand "RFP" is valid, but per the lesson's own convention the named form is
   // always an accepted alternative when that person really is the passenger.
   'agency-11--12': ['RFP', 'RFMRMOUREAUX', 'RF MRMOUREAUX'],
+  // Agency lesson 12, screen id 9 (the RF entry step the app shows as "step 10"): Mr.
+  // Estebez is the PNR's own (single) passenger, so the shorthand "RFP" is valid, but per
+  // the lesson's own convention the named form is always an accepted alternative when that
+  // person really is the passenger.
+  'agency-12--9': ['RFP', 'RFMRESTEBEZ', 'RF MRESTEBEZ'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
