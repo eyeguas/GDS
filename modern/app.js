@@ -761,6 +761,11 @@ const ANSWER_FIXES = {
   // than it did for Brown. The named form is what the review quiz (Q11.DAT) requires for
   // exactly this situation (a third party who is not the PNR's own passenger).
   'classroom-11--7': ['RFMRMARTIAL', 'RF MRMARTIAL'],
+  // Screen id 10 has the mirror-image problem: its text says "Assume the PASSENGER
+  // requested the reservation" -- exactly the scenario screen id 4 already teaches the
+  // "RFP^" shorthand for -- but the recorded answer is the bare "RF", missing the "P" that
+  // marks it as received from the passenger.
+  'classroom-11--10': ['RFP'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
