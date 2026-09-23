@@ -896,6 +896,31 @@ function buildApContactDisplay(command, startCount = 0) {
   if (!parsed) return [];
   return [`  ${startCount + 1} AP ${parsed.city} ${parsed.phone}-${parsed.code}${parsed.assoc ? '/' + parsed.assoc : ''}`];
 }
+// TK<code><date>[/<office>] arranges ticketing (e.g. "TKTL10MAY", "TK TL19AUG/FRA0999",
+// "TKAT11MAR/MADIB1991"). The date is optional -- a status-only code like "TKOK" (tickets
+// already issued) carries none. As with AP/NM, several lessons only ever capture the
+// instructional text and the accepted TK answer, never a real system response screen, so
+// without synthesis the student never sees any ticketing-arrangement element on screen.
+function parseTkCommand(command) {
+  const body = command.trim().toUpperCase().replace(/\s+/g, '');
+  const match = /^TK([A-Z]{2})(\d{1,2}[A-Z]{3})?(?:\/([A-Z0-9]+))?$/.exec(body);
+  if (!match) return null;
+  return { code: match[1], date: match[2] || '', office: match[3] || null };
+}
+function canonicalTkAnswer(answers) {
+  // When a screen accepts both a short and a zero-padded date (e.g. "TKTL6MAY" and
+  // "TKTL06MAY") for the same entry, prefer the longer, more fully-written form.
+  let best = null;
+  for (const answer of answers) {
+    if (parseTkCommand(answer) && (!best || answer.length > best.length)) best = answer;
+  }
+  return best;
+}
+function buildTkArrangementDisplay(command, startCount = 0) {
+  const parsed = parseTkCommand(command);
+  if (!parsed) return [];
+  return [`  ${startCount + 1} TK ${parsed.code}${parsed.date}${parsed.office ? '/' + parsed.office : ''}`];
+}
 function terminalForCurrentScreen() {
   // A real PNR keeps every element visible side by side -- name(s), then the segment(s),
   // then each contact phone as its own numbered line -- until the transaction is ignored
@@ -905,6 +930,7 @@ function terminalForCurrentScreen() {
   // instead of one flat terminal that a real segment screen would otherwise wipe clean.
   let nameLines = [];
   let apLines = [];
+  let tkLines = [];
   let segmentLines = [];
   let plainTerminal = null; // a fully authentic, complete captured screen -- wins outright
   let itemCount = 0;
@@ -914,20 +940,25 @@ function terminalForCurrentScreen() {
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us.
     if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) {
-      nameLines = []; apLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
+      nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
     }
-    // Accumulate synthesized name/contact lines from the PREVIOUS step's accepted answer
-    // unconditionally -- even when the CURRENT screen also carries its own real output
-    // (a bare repeated segment fragment), so entered names/contacts are never dropped.
+    // Accumulate synthesized name/contact/ticketing lines from the PREVIOUS step's
+    // accepted answer unconditionally -- even when the CURRENT screen also carries its
+    // own real output (a bare repeated segment fragment), so entered names, contacts and
+    // ticketing arrangements are never dropped.
     if (previous) {
       const nmAnswer = canonicalNmAnswer(previous.answers);
       const apAnswer = canonicalApAnswer(previous.answers);
+      const tkAnswer = canonicalTkAnswer(previous.answers);
       if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
       } else if (apAnswer) {
         const newLines = buildApContactDisplay(apAnswer, itemCount);
         if (newLines.length) { apLines = apLines.concat(newLines); itemCount += newLines.length; }
+      } else if (tkAnswer) {
+        const newLines = buildTkArrangementDisplay(tkAnswer, itemCount);
+        if (newLines.length) { tkLines = tkLines.concat(newLines); itemCount += newLines.length; }
       }
     }
     if (screen.output.length) {
@@ -937,7 +968,7 @@ function terminalForCurrentScreen() {
         // A bare segment fragment (no RP/ header of its own): this is the itinerary line,
         // not a complete captured state -- replace just the segment slot (the source data
         // already carries however many segment lines are current) and keep accumulating
-        // names/contacts around it.
+        // names/contacts/ticketing around it.
         segmentLines = screen.output;
         plainTerminal = null;
       } else {
@@ -945,17 +976,19 @@ function terminalForCurrentScreen() {
         // segment at all) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        nameLines = []; apLines = []; segmentLines = []; itemCount = 0;
+        nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
       }
     } else {
-      // No real output this step: a plain synthesized display (from names/contacts alone,
-      // or nothing yet) is in effect again.
+      // No real output this step: a plain synthesized display (from names/contacts/
+      // ticketing alone, or nothing yet) is in effect again.
       plainTerminal = null;
     }
   }
   if (plainTerminal !== null) return plainTerminal;
-  if (segmentLines.length) return ['RP/FRALH0999/', ...nameLines, ...segmentLines, ...apLines];
-  return [...nameLines, ...apLines];
+  // Canonical PNR order: header, name(s), segment(s), contact(s), ticketing element(s) --
+  // matching real captured examples (e.g. AM13.DAT: name, segments, AP, then TK last).
+  if (segmentLines.length) return ['RP/FRALH0999/', ...nameLines, ...segmentLines, ...apLines, ...tkLines];
+  return [...nameLines, ...apLines, ...tkLines];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
