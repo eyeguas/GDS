@@ -772,6 +772,12 @@ const ANSWER_FIXES = {
   // is always an accepted alternative to the shorthand whenever that person really is the
   // passenger, so the named form belongs here too, not just the shorthand.
   'classroom-11--17': ['RFP', 'RFMRTHOMAS', 'RF MRTHOMAS'],
+  // Agency lesson 11, screen id 1: same pattern as classroom-11--17 above. Mr. Scarlatti is
+  // the PNR's own passenger (Scarlatti/Barzini), so the shorthand "RFP" is valid, but the
+  // lesson's own convention (naming the requester explicitly is always an accepted
+  // alternative when that person really is the passenger) means the named form belongs
+  // here too, not just the shorthand.
+  'agency-11--1': ['RFP', 'RFMRSCARLATTI', 'RF MRSCARLATTI'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -1069,9 +1075,17 @@ function extractPnrCapture(output) {
     if (/^RP\//.test(line.trim())) continue;
     const kind = classifyNumberedLine(line);
     if (kind) {
+      const normalized = normalizePnrLine(line);
+      // Some lessons (e.g. AM11) list the very same numbered item twice within a single
+      // screen's own captured output -- once as the screen's initial display, then again
+      // verbatim via a later type-6/7/8 entry (the same tail-echo pattern already handled
+      // below for the no-header case, just with a header present this time). That is one
+      // real item, not two, so an exact repeat of an item already captured here adds
+      // nothing and must not be pushed again.
+      if (numberedSoFar.has(normalized)) continue;
       const match = /^(\d+)/.exec(line.trim());
       if (match) maxItem = Math.max(maxItem, Number(match[1]));
-      numberedSoFar.add(normalizePnrLine(line));
+      numberedSoFar.add(normalized);
       if (kind === 'name') nameLines.push(line);
       else if (kind === 'ap') apLines.push(line);
       else if (kind === 'tk') tkLines.push(line);
