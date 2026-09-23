@@ -646,7 +646,13 @@ function parseLesson(text) {
     else if (type === 3 || (type === 4 && !/^Press\s+(?:PgDn\s+)?to proceed\.?$/i.test(value.trim()))) screen.text.push(value);
     else if (type === 5) screen.answers.push(value);
     else if (type === 0 && normal(value) === 'CLS') screen.clear = true;
-    else if (type === 9) screen.end = true;
+    // A type-9 marker's own value distinguishes two very different signals: CLEAR/CLS/IGNORED
+    // mean "the previous transaction just concluded" (mid-lesson, same as a captured "IGNORED"
+    // response) and should reset synthesized PNR state, while END marks the lesson's own final
+    // screen and carries no such meaning -- some lessons show it on the same screen as a last
+    // synthesized answer (e.g. a TK arrangement) that should stay visible on that closing
+    // screen, not be wiped by it.
+    else if (type === 9 && normal(value) !== 'END') screen.end = true;
   }
   return [...screens.values()].sort((a, b) => a.id - b.id);
 }
@@ -984,6 +990,35 @@ function buildTkArrangementDisplay(command, startCount = 0) {
   if (!parsed) return [];
   return [`  ${startCount + 1} TK ${parsed.code}${parsed.date}${parsed.office ? '/' + parsed.office : ''}`];
 }
+// RF<detail> records who requested the reservation -- either a fixed shorthand ("RFP",
+// "RFPAX", "RFPSGR" for the passenger themselves) or a named third party ("RFMRBROWN").
+// Unlike NM/AP/TK, it is never shown as a numbered PNR item -- the lesson that introduces
+// it explains it is "displayed initially below the responsible office identification
+// code", so it is rendered as its own plain line right after the header instead. Several
+// lessons only ever capture the instructional text and this accepted answer, never a real
+// system response, so without synthesis the student never sees the element they just
+// entered before being asked to ignore the transaction. A compound entry that ends the
+// transaction in the same breath (e.g. "RFP;ET") is deliberately NOT matched here: that
+// screen always has its own real, already-captured response showing the stored result, so
+// no synthesis is needed (or wanted) for it.
+function parseRfCommand(command) {
+  const body = command.trim().toUpperCase().replace(/\s+/g, '');
+  const match = /^RF([A-Z0-9/.]*)$/.exec(body);
+  if (!match) return null;
+  return { detail: match[1] };
+}
+function canonicalRfAnswer(answers) {
+  let best = null;
+  for (const answer of answers) {
+    if (parseRfCommand(answer) && (!best || answer.length > best.length)) best = answer;
+  }
+  return best;
+}
+function buildRfLine(command) {
+  const parsed = parseRfCommand(command);
+  if (!parsed) return null;
+  return `RF${parsed.detail ? ' ' + parsed.detail : ''}`;
+}
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
 // echo it again, apparently for its own internal highlighting, not as a second visible
@@ -1044,6 +1079,7 @@ function terminalForCurrentScreen() {
   // "does this step carry a real captured segment" have to be tracked independently
   // instead of one flat terminal that a real segment screen would otherwise wipe clean.
   let header = null; // the real captured "RP/.../ " header text, once one has been seen
+  let rfLine = null; // the synthesized received-from line, shown right after the header
   let nameLines = [];
   let apLines = [];
   let tkLines = [];
@@ -1054,20 +1090,24 @@ function terminalForCurrentScreen() {
     const screen = session.screens[index];
     const previous = index > 0 ? session.screens[index - 1] : null;
     // CLS is executed after the contents of its screen have been read, and so is a
-    // one-off confirmation message once the step that produced it is behind us.
-    if (previous && (previous.clear || isEphemeralConfirmation(previous.output))) {
-      header = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
+    // one-off confirmation message once the step that produced it is behind us. Some
+    // lessons (e.g. LSN11) mark the same "transaction is over" moment with a bare type-9
+    // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
+    // catches those too, so synthesized state resets there just the same.
+    if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
+      header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
     }
-    // Accumulate synthesized name/contact/ticketing lines from the PREVIOUS step's
-    // accepted answer unconditionally -- even when the CURRENT screen also carries its
-    // own real output (a bare repeated segment fragment), so entered names, contacts and
-    // ticketing arrangements are never dropped. itemCount already reflects any real,
+    // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
+    // step's accepted answer unconditionally -- even when the CURRENT screen also carries
+    // its own real output (a bare repeated segment fragment), so entered names, contacts
+    // and ticketing arrangements are never dropped. itemCount already reflects any real,
     // numbered items a prior captured screen established, so a synthesized line always
     // continues that same numbering rather than restarting it.
     if (previous) {
       const nmAnswer = canonicalNmAnswer(previous.answers);
       const apAnswer = canonicalApAnswer(previous.answers);
       const tkAnswer = canonicalTkAnswer(previous.answers);
+      const rfAnswer = canonicalRfAnswer(previous.answers);
       if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
@@ -1077,7 +1117,23 @@ function terminalForCurrentScreen() {
       } else if (tkAnswer) {
         const newLines = buildTkArrangementDisplay(tkAnswer, itemCount);
         if (newLines.length) { tkLines = tkLines.concat(newLines); itemCount += newLines.length; }
+      } else if (rfAnswer) {
+        rfLine = buildRfLine(rfAnswer);
       }
+    }
+    // Some lessons (e.g. LSN11) bundle a type-9 CLEAR/CLS/IGNORED marker into the SAME screen
+    // that goes on to introduce a brand new, unrelated instruction -- unlike the more common
+    // pattern where "IGNORED" is itself a captured, real one-line output (handled by
+    // isEphemeralConfirmation above, on the FOLLOWING screen). When the marker and the new
+    // instruction share a screen and that screen has no real output of its own yet, nothing
+    // else would otherwise clear the still-accumulated synthesis before the new instruction is
+    // shown, so reset here. Guarded to screens with no output of their own: other lessons
+    // (e.g. AM10) bundle the same marker into a screen whose own real, already-captured output
+    // continues (not restarts) the existing PNR -- there the pre-marker state must survive so
+    // that continuation can be built on top of it, and the marker's effect is correctly
+    // deferred to the *following* screen via the previous-based reset above.
+    if ((screen.clear || screen.end) && !screen.output.length) {
+      header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -1085,17 +1141,19 @@ function terminalForCurrentScreen() {
         // A fresh, fully authentic numbered PNR snapshot -- the new ground truth. Its own
         // numbered items (and their exact numbers) replace whatever was tracked before,
         // unless its structure is too rich to safely redistribute (extractPnrCapture
-        // returns null), in which case it is shown exactly as captured instead.
+        // returns null), in which case it is shown exactly as captured instead. A real
+        // capture never shows the received-from element (per the lesson's own explanation,
+        // it disappears once the transaction moves on), so it is cleared here too.
         const capture = extractPnrCapture(screen.output);
         if (capture) {
-          header = capture.header;
+          header = capture.header; rfLine = null;
           nameLines = capture.nameLines; segmentLines = capture.segmentLines;
           apLines = capture.apLines; tkLines = capture.tkLines;
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
           plainTerminal = screen.output;
-          header = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+          header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
         }
       } else if (screen.hasSegmentDetail) {
         // A bare, unnumbered fragment. If every one of its lines already matches an item
@@ -1114,7 +1172,7 @@ function terminalForCurrentScreen() {
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+        header = null; rfLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
       }
     } else {
       // No real output this step: a plain synthesized display (from names/contacts/
@@ -1123,13 +1181,19 @@ function terminalForCurrentScreen() {
     }
   }
   if (plainTerminal !== null) return plainTerminal;
-  // Canonical PNR order: header, name(s), segment(s), contact(s), ticketing element(s) --
-  // matching real captured examples (e.g. AM13.DAT: name, segments, AP, then TK last). A
-  // header shows whenever one was actually captured, or (matching the previously shipped
-  // behavior for lessons that never capture one) whenever an uncounted segment fragment is
-  // being shown and needs one synthesized for it.
-  if (header || segmentLines.length) return [header || 'RP/FRALH0999/', ...nameLines, ...segmentLines, ...apLines, ...tkLines];
-  return [...nameLines, ...apLines, ...tkLines];
+  // Canonical PNR order: header, received-from element, name(s), segment(s), contact(s),
+  // ticketing element(s) -- matching real captured examples for everything but the
+  // received-from element (e.g. AM13.DAT: name, segments, AP, then TK last), and the
+  // lesson's own description for that element ("displayed initially below the responsible
+  // office identification code", i.e. right after the header). A header shows whenever one
+  // was actually captured, or (matching the previously shipped behavior for lessons that
+  // never capture one) whenever an uncounted segment fragment is being shown and needs one
+  // synthesized for it -- but NOT merely because a received-from line is pending: several
+  // lessons teach the RF entry before any PNR context exists at all, and inventing a
+  // header there would show a PNR that was never actually started.
+  const rfPart = rfLine ? [rfLine] : [];
+  if (header || segmentLines.length) return [header || 'RP/FRALH0999/', ...rfPart, ...nameLines, ...segmentLines, ...apLines, ...tkLines];
+  return [...rfPart, ...nameLines, ...apLines, ...tkLines];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
