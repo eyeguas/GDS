@@ -1342,8 +1342,16 @@ function terminalForCurrentScreen() {
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
-          plainTerminal = screen.output;
-          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; itemCount = 0;
+          // Too rich to redistribute (e.g. a bare, unnumbered re-echo of the same PNR that
+          // happens to repeat its header) -- shown as captured. Unlike name/segment/AP/TK,
+          // which this bare echo always repeats for real, the original .DAT convention never
+          // re-echoes a remark here, so any already-entered remark(s) would otherwise vanish
+          // from every later screen that re-shows this same PNR this way. Keeping remarkLines
+          // (and itemCount, so a later remark keeps numbering from where these left off) and
+          // appending them after the captured lines shows this exactly as a real terminal
+          // would: the echoed PNR, with its remarks still in place at the end.
+          plainTerminal = screen.output.concat(remarkLines);
+          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = [];
         }
       } else if (screen.hasSegmentDetail) {
         // A bare, unnumbered fragment. If every one of its lines already matches an item
