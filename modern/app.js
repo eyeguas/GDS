@@ -1139,6 +1139,39 @@ function buildTkArrangementDisplay(command, startCount = 0) {
   if (!parsed) return [];
   return [`  ${startCount + 1} TK ${parsed.code}${parsed.date}${parsed.office ? '/' + parsed.office : ''}`];
 }
+// AB<address> (billing address) and AM<address> (mailing address) each file a free-format
+// address against the PNR -- structured numbered items just like AP/TK, not freeform remarks
+// like RM/RC. Several lessons (classroom 13's own Diaz and Bryant drills) only ever capture
+// the instructional text and the accepted AB/AM answer, never a real system response, so
+// without synthesis the student never sees the address actually take its place in the PNR.
+// Other lessons DO capture a real screen with these elements already in place -- e.g.
+// AM29.DAT: "2 AB POLYMETRICS,P O 1132,1011 FRANKFURT" / "3 AM POLYMETRICS,KAISERPLATZ,1021
+// FRANKFURT", and LSN29B.DAT similarly -- which is what fixes the exact numbered format used
+// here: the code, a single space, then the address exactly as typed with every comma-separated
+// segment kept on the same line and no space after the comma (matching those same real
+// captures, even though several of this lesson's own accepted answers use "text, more text"
+// with a space). Unlike RM/RC, AB and AM are not alternatives to each other -- a PNR commonly
+// carries both a billing and a mailing address at once (as in that same AM29 example), so each
+// is appended as its own line rather than one replacing the other.
+function parseAbAmCommand(command) {
+  const trimmed = command.trim().toUpperCase().replace(/\s+/g, ' ');
+  const match = /^(AB|AM)\s*(\S.*)$/.exec(trimmed);
+  if (!match) return null;
+  return { code: match[1], text: match[2].trim().replace(/\s*,\s*/g, ',') };
+}
+function canonicalAbAmAnswer(answers) {
+  let best = null;
+  for (const answer of answers) {
+    const parsed = parseAbAmCommand(answer);
+    if (parsed && (!best || parsed.text.length > best.text.length)) best = { answer, text: parsed.text };
+  }
+  return best ? best.answer : null;
+}
+function buildAddressDisplay(command, startCount = 0) {
+  const parsed = parseAbAmCommand(command);
+  if (!parsed) return [];
+  return [`  ${startCount + 1} ${parsed.code} ${parsed.text}`];
+}
 // RF<detail> records who requested the reservation -- either a fixed shorthand ("RFP",
 // "RFPAX", "RFPSGR" for the passenger themselves) or a named third party ("RFMRBROWN").
 // Unlike NM/AP/TK, it is never shown as a numbered PNR item -- the lesson that introduces
@@ -1212,6 +1245,14 @@ function classifyNumberedLine(line) {
   if (/^\d+\.\S/.test(trimmed)) return 'name';
   if (/^\d+\s+AP\s/i.test(trimmed)) return 'ap';
   if (/^\d+\s+TK\s/i.test(trimmed)) return 'tk';
+  // A numbered flight segment can coincidentally start with a two-letter carrier code that
+  // reads like AB/AM (e.g. Aeromexico's "AM", as in "2  AM  30 W 19MAR 5 MEXEZE HK1..."), so
+  // the code alone isn't enough to tell a real address element apart from one. Every genuine
+  // AB/AM address entry in this curriculum is comma-separated (name/company, street, city --
+  // e.g. "2 AB POLYMETRICS,P O 1132,1011 FRANKFURT"), and no flight segment, seat map or other
+  // numbered item ever contains a comma, so requiring one here is what actually distinguishes
+  // them.
+  if (/^\d+\s+A[BM]\s.*,/i.test(trimmed)) return 'address';
   if (/^\d+\s+\S/.test(trimmed)) return 'segment';
   return null;
 }
@@ -1221,7 +1262,7 @@ function classifyNumberedLine(line) {
 // can keep numbering from exactly where this real capture left off.
 function extractPnrCapture(output) {
   const header = output.find(line => /^RP\//.test(line.trim())) || null;
-  const nameLines = [], segmentLines = [], apLines = [], tkLines = [];
+  const nameLines = [], segmentLines = [], apLines = [], tkLines = [], addressLines = [];
   const numberedSoFar = new Set();
   let maxItem = 0;
   for (const line of output) {
@@ -1242,6 +1283,7 @@ function extractPnrCapture(output) {
       if (kind === 'name') nameLines.push(line);
       else if (kind === 'ap') apLines.push(line);
       else if (kind === 'tk') tkLines.push(line);
+      else if (kind === 'address') addressLines.push(line);
       else segmentLines.push(line);
       continue;
     }
@@ -1253,7 +1295,7 @@ function extractPnrCapture(output) {
     // real content, bail out and let the caller show the whole capture verbatim instead.
     if (!numberedSoFar.has(normalizePnrLine(line))) return null;
   }
-  return { header, nameLines, segmentLines, apLines, tkLines, itemCount: maxItem };
+  return { header, nameLines, segmentLines, apLines, tkLines, addressLines, itemCount: maxItem };
 }
 function terminalForCurrentScreen() {
   // A real PNR keeps every element visible side by side -- name(s), then the segment(s),
@@ -1268,6 +1310,7 @@ function terminalForCurrentScreen() {
   let nameLines = [];
   let apLines = [];
   let tkLines = [];
+  let addressLines = []; // synthesized/captured AB/AM address element(s), shown after AP
   let segmentLines = [];
   let remarkLines = []; // synthesized RM/RC remark(s), shown last among the numbered items
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
@@ -1281,7 +1324,7 @@ function terminalForCurrentScreen() {
     // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
     // catches those too, so synthesized state resets there just the same.
     if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; plainTerminal = null; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; plainTerminal = null; itemCount = 0;
     }
     // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
     // step's accepted answer unconditionally -- even when the CURRENT screen also carries
@@ -1293,6 +1336,7 @@ function terminalForCurrentScreen() {
       const nmAnswer = canonicalNmAnswer(previous.answers);
       const apAnswer = canonicalApAnswer(previous.answers);
       const tkAnswer = canonicalTkAnswer(previous.answers);
+      const abAmAnswer = canonicalAbAmAnswer(previous.answers);
       const rfAnswer = canonicalRfAnswer(previous.answers);
       const rmAnswer = canonicalRmAnswer(previous.answers);
       if (nmAnswer) {
@@ -1304,6 +1348,9 @@ function terminalForCurrentScreen() {
       } else if (tkAnswer) {
         const newLines = buildTkArrangementDisplay(tkAnswer, itemCount);
         if (newLines.length) { tkLines = tkLines.concat(newLines); itemCount += newLines.length; }
+      } else if (abAmAnswer) {
+        const newLines = buildAddressDisplay(abAmAnswer, itemCount);
+        if (newLines.length) { addressLines = addressLines.concat(newLines); itemCount += newLines.length; }
       } else if (rfAnswer) {
         rfLine = buildRfLine(rfAnswer);
       } else if (rmAnswer) {
@@ -1323,7 +1370,7 @@ function terminalForCurrentScreen() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; itemCount = 0; plainTerminal = null;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; itemCount = 0; plainTerminal = null;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -1338,7 +1385,7 @@ function terminalForCurrentScreen() {
         if (capture) {
           header = capture.header; rfLine = null; noticeLine = null;
           nameLines = capture.nameLines; segmentLines = capture.segmentLines;
-          apLines = capture.apLines; tkLines = capture.tkLines; remarkLines = [];
+          apLines = capture.apLines; tkLines = capture.tkLines; addressLines = capture.addressLines; remarkLines = [];
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
@@ -1351,7 +1398,7 @@ function terminalForCurrentScreen() {
           // appending them after the captured lines shows this exactly as a real terminal
           // would: the echoed PNR, with its remarks still in place at the end.
           plainTerminal = screen.output.concat(remarkLines);
-          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = [];
+          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = [];
         }
       } else if (screen.hasSegmentDetail) {
         // A bare, unnumbered fragment. If every one of its lines already matches an item
@@ -1361,7 +1408,7 @@ function terminalForCurrentScreen() {
         // than replacing them with this unnumbered echo. Only genuinely new content (no
         // established base yet, e.g. LSN9B/LSN10's very first segment line) is shown, and
         // -- matching the original .DAT's own lack of a number for it -- uncounted.
-        const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines, ...remarkLines].map(normalizePnrLine));
+        const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines, ...addressLines, ...remarkLines].map(normalizePnrLine));
         const newLines = screen.output.filter(line => !known.has(normalizePnrLine(line)));
         if (newLines.length === 1 && isTransactionBanner(newLines[0])) {
           // A real one-line transaction-status confirmation (e.g. "END OF TRANSACTION
@@ -1383,9 +1430,9 @@ function terminalForCurrentScreen() {
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; itemCount = 0;
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || remarkLines.length || rfLine || noticeLine) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || rfLine || noticeLine) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, or a previously captured header/segment) is already under
       // way -- that takes over, matching the original behavior for lessons that build up a
@@ -1399,19 +1446,30 @@ function terminalForCurrentScreen() {
   }
   if (plainTerminal !== null) return plainTerminal;
   // Canonical PNR order: header, received-from element, name(s), segment(s), contact(s),
-  // ticketing element(s) -- matching real captured examples for everything but the
-  // received-from element (e.g. AM13.DAT: name, segments, AP, then TK last), and the
-  // lesson's own description for that element ("displayed initially below the responsible
-  // office identification code", i.e. right after the header). A header shows whenever one
-  // was actually captured, or (matching the previously shipped behavior for lessons that
-  // never capture one) whenever an uncounted segment fragment is being shown and needs one
-  // synthesized for it -- but NOT merely because a received-from line is pending: several
-  // lessons teach the RF entry before any PNR context exists at all, and inventing a
-  // header there would show a PNR that was never actually started.
+  // address element(s), ticketing element(s) -- matching real captured examples for everything
+  // but the received-from element (e.g. AM13.DAT: name, segments, AP, then TK last; AM29.DAT /
+  // LSN29B.DAT: name, AP(s), then AB/AM last), and the lesson's own description for the
+  // received-from element ("displayed initially below the responsible office identification
+  // code", i.e. right after the header). A header shows whenever one was actually captured, or
+  // (matching the previously shipped behavior for lessons that never capture one) whenever an
+  // uncounted segment fragment is being shown and needs one synthesized for it -- but NOT
+  // merely because a received-from line is pending: several lessons teach the RF entry before
+  // any PNR context exists at all, and inventing a header there would show a PNR that was never
+  // actually started.
   const rfPart = rfLine ? [rfLine] : [];
   const noticePart = noticeLine ? [noticeLine] : [];
-  if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...apLines, ...tkLines, ...remarkLines];
-  return [...rfPart, ...noticePart, ...nameLines, ...apLines, ...tkLines, ...remarkLines];
+  // AP, TK, AB/AM and RM/RC are each their own bucket (populated whenever that element's
+  // command is answered, in no particular order relative to each other -- a lesson may well
+  // teach a remark before an address, or an address before ticketing), but every line in all
+  // four already carries the real PNR item number it was assigned when itemCount advanced for
+  // it. Concatenating the buckets in a fixed order can then show a later, higher-numbered item
+  // ahead of an earlier one; sorting the combined set by that leading number is what actually
+  // guarantees the ascending order a real terminal always shows, regardless of which order the
+  // lesson happens to teach these four elements in.
+  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines]
+    .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
+  if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
+  return [...rfPart, ...noticePart, ...nameLines, ...trailingItems];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
