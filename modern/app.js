@@ -815,6 +815,15 @@ const TEXT_FIXES = {
     ['This entry indicates that Mr. Brown requested the service. Input this', 'This entry indicates that Mr. Brown requested the service.'],
     ['entry. Note that the text does not include any spaces. If a space is input,', 'Note that the text does not include any spaces. If a space is input,'],
   ],
+  // Classroom lesson 5, part C, screen id3's own question text is garbled: a stray "?" is
+  // left mid-sentence, and "first segment, on the" is duplicated right after it, splitting
+  // what should read as one continuous question into a broken fragment followed by a second
+  // question mark. Corrected to the single intended sentence, matching the pattern of the
+  // two preceding questions (id1/id2) in this same part.
+  'classroom-5-C-3': [
+    ['and in V class on the?', 'and in V class on the'],
+    ['first segment, on the third segment?', 'third segment?'],
+  ],
 };
 function applyTextFix(mode, number, part, screen) {
   const fixes = TEXT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -1199,7 +1208,7 @@ function terminalForCurrentScreen() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0; plainTerminal = null;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -1253,11 +1262,17 @@ function terminalForCurrentScreen() {
         plainTerminal = screen.output;
         header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
       }
-    } else {
-      // No real output this step: a plain synthesized display (from names/contacts/
-      // ticketing alone, or nothing yet) is in effect again.
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || rfLine || noticeLine) {
+      // No real output this step, but a synthesized display (from a received-from element,
+      // names/contacts/ticketing, or a previously captured header/segment) is already under
+      // way -- that takes over, matching the original behavior for lessons that build up a
+      // PNR through several unrelated instruction screens.
       plainTerminal = null;
     }
+    // else: no real output AND nothing synthesized either -- a purely explanatory screen
+    // (e.g. LSN5's field-by-field walkthrough of a single captured segment display) has no
+    // reason to blank out an already-shown authentic screen (plainTerminal), so it is left
+    // exactly as it was until something real or synthesized actually replaces it.
   }
   if (plainTerminal !== null) return plainTerminal;
   // Canonical PNR order: header, received-from element, name(s), segment(s), contact(s),
