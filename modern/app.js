@@ -788,6 +788,35 @@ const ANSWER_FIXES = {
   // the lesson's own convention the named form is always an accepted alternative when that
   // person really is the passenger.
   'agency-12--9': ['RFP', 'RFMRESTEBEZ', 'RF MRESTEBEZ'],
+  // Classroom lesson 13 (supplementary data) recorded the bare transaction code alone for
+  // every free-text remark (RM) and confidential-remark (RC) entry, dropping the actual
+  // text each screen's own instructions ask the student to type -- so a student could pass
+  // by entering just "RM" or "RC" with nothing after it. Restoring the exact text each
+  // screen itself shows or asks for.
+  'classroom-13--1': ['RMADVISE CLIENT ABOUT EXCHANGE RATES'],
+  'classroom-13--4': ['RMPSGR ADV DOCS'],
+  'classroom-13--5': ['RMPSGR ADV FARE INCR'],
+  'classroom-13--7': ['RCUNLISTED PHONE/FRA 069 234554'],
+  'classroom-13--8': ['RCCONFIDENTIAL TRAVEL'],
+  // Part B continues the same lesson and reuses the same two abbreviations (documents,
+  // fare increase) it just taught in the base part, and the same "UNLISTED PHONE/<city>
+  // <number>" template for a confidential remark, applied to this part's own city and
+  // number (Rome, then London).
+  'classroom-13-B-3': ['RCUNLISTED PHONE/ROM 06 4753827'],
+  'classroom-13-B-4': ['RMPSGR ADV DOCS'],
+  'classroom-13-B-7': ['RMPSGR ADV FARE INCR'],
+  'classroom-13-B-10': ['RCUNLISTED PHONE/LON 0171 3542347'],
+  // Agency lesson 13, screen id 1: the same bug, but the placeholder left behind is the
+  // literal word "TEXT" rather than nothing -- "passenger advised regarding the
+  // cancellation penalty" is exactly the scenario Classroom lesson 13's own taught
+  // abbreviation list covers ("RMPSGR ADV XNCL PENALTY -- Passenger advised of
+  // cancellation penalty"), so that abbreviation is restored here.
+  'agency-13--1': ['RMPSGR ADV XNCL PENALTY'],
+  // Agency lesson 13, screen id 14: same bug, but "arrange a car rental later" has no
+  // taught abbreviation anywhere in the curriculum to restore -- a reasonable free-text
+  // entry is used instead (see the matching addition to this screen's own instructions in
+  // TEXT_FIXES, which now shows this exact text as a worked example).
+  'agency-13--14': ['RMCLIENT WILL ARRANGE CAR RENTAL LATER'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -850,10 +879,23 @@ const TEXT_FIXES = {
   'classroom-30-B-16': [
     ['List all Roma airports', 'List all Rome airports'],
   ],
+  // Agency lesson 13, screen id 14 ("Store this information as a general remark.") is the
+  // one remark exercise in this curriculum with no taught abbreviation to reuse and no
+  // worked example of its own (see the matching ANSWER_FIXES entry) -- adding one here, in
+  // the same "as follows: / example / Input this entry." shape every other remark exercise
+  // in this lesson already uses, so the student sees exactly what to type instead of
+  // guessing at free text.
+  'agency-13--14': [
+    ['as a general remark.', 'as a general remark, as follows:\n\n                RMCLIENT WILL ARRANGE CAR RENTAL LATER\n\nInput this entry.'],
+  ],
 };
 function applyTextFix(mode, number, part, screen) {
   const fixes = TEXT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
-  if (fixes) screen.text = screen.text.map(line => fixes.reduce((acc, [from, to]) => acc.split(from).join(to), line));
+  // A replacement may itself contain "\n" to split back into several lines -- e.g. adding
+  // a worked example (its own line, blank lines around it) where the original had none.
+  // Every existing fix's replacement text has no "\n" in it, so .split('\n') there simply
+  // returns the one line unchanged: this is purely additive, not a behavior change.
+  if (fixes) screen.text = screen.text.flatMap(line => fixes.reduce((acc, [from, to]) => acc.split(from).join(to), line).split('\n'));
   return screen;
 }
 // A couple of screens in Classroom lesson 7 tell the student, in their own instructional
