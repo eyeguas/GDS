@@ -884,6 +884,13 @@ const SCREEN_CLEAR_FIXES = new Set([
   // still-accumulated PNR display from before ending the transaction (screen id 6) has no
   // reason to keep showing here.
   'classroom-12-B-7',
+  // Classroom lesson 5, part C, screen id 4: the lesson's closing message ("You have reached
+  // the end of the lesson..."), with no exercise or system effect of its own -- the .DAT marks
+  // this screen's own type-9 marker as "END" (the one value that parseLesson treats as NOT a
+  // reset, since it's also used mid-lesson to mean "keep going"), so nothing else clears the
+  // still-accumulated availability display from the last exercise (screen id0) before this
+  // closing screen. A pure closing message has no reason to keep showing it.
+  'classroom-5-C-4',
 ]);
 function applyClearFix(mode, number, part, screen) {
   if (!SCREEN_CLEAR_FIXES.has(`${mode}-${number}-${part}-${screen.id}`)) return screen;
