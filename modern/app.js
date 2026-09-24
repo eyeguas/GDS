@@ -817,6 +817,14 @@ const ANSWER_FIXES = {
   // entry is used instead (see the matching addition to this screen's own instructions in
   // TEXT_FIXES, which now shows this exact text as a worked example).
   'agency-13--14': ['RMCLIENT WILL ARRANGE CAR RENTAL LATER'],
+  // Agency lesson 14, screen id 13: the same bug (bare placeholder "RMTEXT"), surfaced once
+  // remarks are shown on screen (see terminalForCurrentScreen's RM/RC synthesis). "Advised
+  // the clients about a fare increase on 10 March" is exactly Classroom/Agency lesson 13's
+  // own taught abbreviation for a fare-increase advisory ("RMPSGR ADV FARE INCR"), so that
+  // abbreviation is restored here with this screen's own date appended, matching the dated
+  // form the Review quiz for lesson 13 already uses for the same scenario ("RMADV FARE
+  // INCR/10MAY").
+  'agency-14--13': ['RMPSGR ADV FARE INCR/10MAR'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -1160,6 +1168,33 @@ function buildRfLine(command) {
   if (!parsed) return null;
   return `RF${parsed.detail ? ' ' + parsed.detail : ''}`;
 }
+// RM<text> (a general remark) and RC<text> (a confidential remark, visible only to the
+// booking office) both file free-text notes against the PNR. Unlike RF, the lesson that
+// introduces them (classroom 13) treats each one as a full numbered PNR item -- e.g.
+// "6 RM PSGR ADV DOCS" -- and several of that lesson's own screens never capture a real
+// system response for the RM/RC entry they just asked for, so without synthesis the
+// student never sees the remark actually take its place in the PNR. As with NM/AP/TK, this
+// is shown last among the numbered items (after any AP/TK arrangement), matching the order
+// a real PNR lists them in and the lesson's own instruction that a remark is "added to the
+// end of the PNR".
+function parseRmCommand(command) {
+  const trimmed = command.trim().toUpperCase().replace(/\s+/g, ' ');
+  const match = /^(RM|RC)\s*(\S.*)$/.exec(trimmed);
+  if (!match) return null;
+  return { code: match[1], text: match[2].trim() };
+}
+function canonicalRmAnswer(answers) {
+  let best = null;
+  for (const answer of answers) {
+    if (parseRmCommand(answer) && (!best || answer.length > best.length)) best = answer;
+  }
+  return best;
+}
+function buildRmDisplay(command, startCount = 0) {
+  const parsed = parseRmCommand(command);
+  if (!parsed) return [];
+  return [`  ${startCount + 1} ${parsed.code} ${parsed.text}`];
+}
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
 // echo it again, apparently for its own internal highlighting, not as a second visible
@@ -1234,6 +1269,7 @@ function terminalForCurrentScreen() {
   let apLines = [];
   let tkLines = [];
   let segmentLines = [];
+  let remarkLines = []; // synthesized RM/RC remark(s), shown last among the numbered items
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
   for (let index = 0; index <= session.index; index += 1) {
@@ -1245,7 +1281,7 @@ function terminalForCurrentScreen() {
     // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
     // catches those too, so synthesized state resets there just the same.
     if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; plainTerminal = null; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; plainTerminal = null; itemCount = 0;
     }
     // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
     // step's accepted answer unconditionally -- even when the CURRENT screen also carries
@@ -1258,6 +1294,7 @@ function terminalForCurrentScreen() {
       const apAnswer = canonicalApAnswer(previous.answers);
       const tkAnswer = canonicalTkAnswer(previous.answers);
       const rfAnswer = canonicalRfAnswer(previous.answers);
+      const rmAnswer = canonicalRmAnswer(previous.answers);
       if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
@@ -1269,6 +1306,9 @@ function terminalForCurrentScreen() {
         if (newLines.length) { tkLines = tkLines.concat(newLines); itemCount += newLines.length; }
       } else if (rfAnswer) {
         rfLine = buildRfLine(rfAnswer);
+      } else if (rmAnswer) {
+        const newLines = buildRmDisplay(rmAnswer, itemCount);
+        if (newLines.length) { remarkLines = remarkLines.concat(newLines); itemCount += newLines.length; }
       }
     }
     // Some lessons (e.g. LSN11) bundle a type-9 CLEAR/CLS/IGNORED marker into the SAME screen
@@ -1283,7 +1323,7 @@ function terminalForCurrentScreen() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0; plainTerminal = null;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; itemCount = 0; plainTerminal = null;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -1298,12 +1338,12 @@ function terminalForCurrentScreen() {
         if (capture) {
           header = capture.header; rfLine = null; noticeLine = null;
           nameLines = capture.nameLines; segmentLines = capture.segmentLines;
-          apLines = capture.apLines; tkLines = capture.tkLines;
+          apLines = capture.apLines; tkLines = capture.tkLines; remarkLines = [];
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
           plainTerminal = screen.output;
-          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; itemCount = 0;
         }
       } else if (screen.hasSegmentDetail) {
         // A bare, unnumbered fragment. If every one of its lines already matches an item
@@ -1313,7 +1353,7 @@ function terminalForCurrentScreen() {
         // than replacing them with this unnumbered echo. Only genuinely new content (no
         // established base yet, e.g. LSN9B/LSN10's very first segment line) is shown, and
         // -- matching the original .DAT's own lack of a number for it -- uncounted.
-        const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines].map(normalizePnrLine));
+        const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines, ...remarkLines].map(normalizePnrLine));
         const newLines = screen.output.filter(line => !known.has(normalizePnrLine(line)));
         if (newLines.length === 1 && isTransactionBanner(newLines[0])) {
           // A real one-line transaction-status confirmation (e.g. "END OF TRANSACTION
@@ -1335,9 +1375,9 @@ function terminalForCurrentScreen() {
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; itemCount = 0;
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; segmentLines = []; remarkLines = []; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || rfLine || noticeLine) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || remarkLines.length || rfLine || noticeLine) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, or a previously captured header/segment) is already under
       // way -- that takes over, matching the original behavior for lessons that build up a
@@ -1362,8 +1402,8 @@ function terminalForCurrentScreen() {
   // header there would show a PNR that was never actually started.
   const rfPart = rfLine ? [rfLine] : [];
   const noticePart = noticeLine ? [noticeLine] : [];
-  if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...apLines, ...tkLines];
-  return [...rfPart, ...noticePart, ...nameLines, ...apLines, ...tkLines];
+  if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...apLines, ...tkLines, ...remarkLines];
+  return [...rfPart, ...noticePart, ...nameLines, ...apLines, ...tkLines, ...remarkLines];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
