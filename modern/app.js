@@ -824,6 +824,32 @@ const TEXT_FIXES = {
     ['and in V class on the?', 'and in V class on the'],
     ['first segment, on the third segment?', 'third segment?'],
   ],
+  // A handful of screens left a city name untranslated from the original Spanish course
+  // material -- every other lesson in this English-language app spells these cities in
+  // English (confirmed elsewhere in the corpus: Moscow, Tokyo, Beijing, Cape Town, Rome all
+  // appear correctly spelled in other screens), so these are corrected to match.
+  'classroom-4-B-1': [
+    ['Ciudad del Cabo', 'Cape Town'],
+  ],
+  'classroom-2--16': [
+    ['Moscu', 'Moscow'],
+  ],
+  'classroom-2-B-3': [
+    ['Haneda, Tokio', 'Haneda, Tokyo'],
+  ],
+  'classroom-6--1': [
+    ['Vnukovo^ (Moscu)', 'Vnukovo^ (Moscow)'],
+  ],
+  'classroom-6--2': [
+    ['Moscu^ (Sheremetyevo)', 'Moscow^ (Sheremetyevo)'],
+    ['Tokio^ (Haneda International)', 'Tokyo^ (Haneda International)'],
+  ],
+  'classroom-6--3': [
+    ['Tokio (Narita) to Pekin', 'Tokyo (Narita) to Beijing'],
+  ],
+  'classroom-30-B-16': [
+    ['List all Roma airports', 'List all Rome airports'],
+  ],
 };
 function applyTextFix(mode, number, part, screen) {
   const fixes = TEXT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
