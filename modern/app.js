@@ -629,18 +629,55 @@ function formatInstructionHtml(kicker, rawLines) {
 }
 // -----------------------------------------------------------------------------------
 
+// A type-61 entry is the original DOS material's own abbreviated re-display of a flight
+// segment (carrier+flight, class, city pair, equipment, stop count) that was already shown
+// in full just above it via a type-6 line on the SAME screen, sometimes followed by a bare
+// continuation line that also just repeats that segment's terminal/service remark. Extracts
+// the leading carrier+flight-number token (e.g. "LH2274", "RK315") so a type-61 recap line
+// can be matched back to the full segment it restates, whether the source spaced the number
+// away from the carrier code ("RK 315") or ran them together ("LH2274") -- both forms occur
+// throughout the corpus for the very same flights.
+function extractFlightKey(line) {
+  const m = /^\s*([A-Z]{2})\s?(\d{1,4})\b/.exec(line);
+  return m ? m[1] + m[2] : null;
+}
 function parseLesson(text) {
   const screens = new Map();
   const matcher = /scr\("(\d+)",(\d+),"((?:\\.|[^"\\])*)"\)/g;
   const terminalTypes = new Set([1, 6, 7, 8, 11, 12, 61, 78, 88]);
   for (const match of text.matchAll(matcher)) {
     const key = Number(match[1]);
-    if (!screens.has(key)) screens.set(key, { id: key, title: [], text: [], output: [], hasSegmentDetail: false, answers: [], clear: false, end: false });
+    if (!screens.has(key)) screens.set(key, { id: key, title: [], text: [], output: [], hasSegmentDetail: false, answers: [], clear: false, end: false, _segmentLines: new Map(), _lastType61Key: null });
     const screen = screens.get(key), type = Number(match[2]), value = decodeLegacy(match[3]);
     if (type === 22) screen.title.push(value);
+    else if (type === 61) {
+      // Same-screen redundancy from the original material (never introduced by this app):
+      // an abbreviated recap of a segment already shown in full is always dropped -- it never
+      // carries a field beyond what the full type-6 line already displayed -- and a bare
+      // continuation line right after it (no leading flight code) is dropped only when it
+      // exactly repeats (ignoring case/spacing) a line from THAT SAME segment's own type-6
+      // entry, e.g. a terminal remark restated verbatim. The comparison is scoped to the one
+      // segment the 61 line follows, not the whole screen, because a genuinely repeated code
+      // -- e.g. two different flights both noting "1/ MOVIE" -- is real per-segment
+      // information, not an echo, and must stay for each segment it actually applies to.
+      const flightKey = extractFlightKey(value);
+      if (flightKey) {
+        screen._lastType61Key = flightKey;
+        if (!screen._segmentLines.has(flightKey)) screen.output.push(value);
+      } else {
+        const known = screen._lastType61Key ? screen._segmentLines.get(screen._lastType61Key) : null;
+        if (!known || !known.has(normalizePnrLine(value))) screen.output.push(value);
+      }
+    }
     else if (terminalTypes.has(type)) {
       screen.output.push(value);
-      if (type === 6) screen.hasSegmentDetail = true;
+      if (type === 6) {
+        screen.hasSegmentDetail = true;
+        const flightKey = extractFlightKey(value);
+        if (flightKey && !screen._segmentLines.has(flightKey)) {
+          screen._segmentLines.set(flightKey, new Set(value.split('\n').map(normalizePnrLine)));
+        }
+      }
     }
     else if (type === 2) screen.text.push(value);
     else if (type === 3 || (type === 4 && !/^Press\s+(?:PgDn\s+)?to proceed\.?$/i.test(value.trim()))) screen.text.push(value);
