@@ -638,7 +638,11 @@ function formatInstructionHtml(kicker, rawLines) {
 // away from the carrier code ("RK 315") or ran them together ("LH2274") -- both forms occur
 // throughout the corpus for the very same flights.
 function extractFlightKey(line) {
-  const m = /^\s*([A-Z]{2})\s?(\d{1,4})\b/.exec(line);
+  // Real IATA 2-character carrier codes are not always two letters -- the corpus itself uses
+  // several with a digit (U2, W6, W9, 4M), so the carrier half must accept any two
+  // alphanumerics, not just [A-Z]{2} (which silently failed to match those and left their
+  // duplicate type-61 lines undetected).
+  const m = /^\s*([A-Z0-9]{2})\s?(\d{1,4})\b/.exec(line);
   return m ? m[1] + m[2] : null;
 }
 function parseLesson(text) {
@@ -770,6 +774,15 @@ const ANSWER_FIXES = {
   'agency-12--7': ['APMAD 01 245 7692-H'],
   'agency-13--10': ['APPAR 47 62 31 88-B/P1'],
   'agency-13--11': ['APPAR 61 34 07 74-H'],
+  // Agency lesson 13, screen id 15: the received-from element for Mr. Reine, who is himself
+  // the PNR's passenger. The .DAT only ever records the bare "RFP" form, matching the
+  // convention this curriculum's own foundational RF lesson teaches for exactly this
+  // situation (Classroom lesson 11's "Mr. Thomas" example: Thomas is the PNR's own
+  // passenger, and the taught/accepted answer is still bare "RFP", not his name) -- so this
+  // is not a data-entry bug, just the taught form. Added "RFMRREINE" as a lenient extra
+  // accepted answer at the user's explicit request, alongside the taught "RFP", not instead
+  // of it.
+  'agency-13--15': ['RFP', 'RFMRREINE'],
   'agency-14--10': ['APAMS 020 228166-B', 'APAMS 020 228166-B/P1'],
   'agency-14--11': ['APAMS 020 232010-H'],
   'agency-15--11': ['APFRA 069 2302882-B'],
@@ -943,10 +956,10 @@ function applyTextFix(mode, number, part, screen) {
   if (fixes) screen.text = screen.text.flatMap(line => fixes.reduce((acc, [from, to]) => acc.split(from).join(to), line).split('\n'));
   return screen;
 }
-// A couple of screens in Classroom lesson 7 tell the student, in their own instructional
-// wording, to "Input MPAN^ to redisplay the availability display" before booking -- but
-// the lesson's own accepted-answer field only ever recorded the booking command itself, so
-// MPAN was never actually required, and the availability display it's meant to bring back
+// A few screens in Classroom lesson 7 tell the student, in their own instructional wording,
+// to redisplay the availability display (two of them spell this out as "Input MPAN^...") --
+// but the lesson's own accepted-answer field only ever recorded the booking command itself,
+// so MPAN was never actually required, and the availability display it's meant to bring back
 // was never shown again either. Splitting each of these into the two real steps its own
 // wording already describes: a first step that asks for and validates MPAN and, once
 // entered, shows exactly the availability display that was last on screen (matching what a
@@ -968,6 +981,18 @@ const SCREEN_SPLITS = {
     firstAnswers: ['MPAN'],
     redisplayFrom: 6,
     secondText: ['Then book a confirmed reservation for 2 seats in S class on the flight in line 2.'],
+  },
+  // Part B, screen id 4: same shape as the two above, but its own wording doesn't spell out
+  // "MPAN^" by name -- it just says "Redisplay the availability display.", which is exactly
+  // what MPAN does, so it's still the intended entry for this first step. The availability
+  // display to bring back is the one shown at id 3 (the waitlist step, which itself displays
+  // the MAD/LGW availability before waitlisting a seat on it) -- nothing between id 3 and id
+  // 4 changes that display.
+  'classroom-7-B-4': {
+    firstText: ['Redisplay the availability display.'],
+    firstAnswers: ['MPAN'],
+    redisplayFrom: 3,
+    secondText: ['Then book a confirmed reservation in T class on the flight in line 4.'],
   },
 };
 function applyScreenSplits(mode, number, part, screens) {
