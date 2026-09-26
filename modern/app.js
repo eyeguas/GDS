@@ -1068,7 +1068,14 @@ function showLessons(mode) {
     const savedIndex = pos[progressKey(mode, item.number)];
     const inProgress = !done && savedIndex !== undefined;
     const status = done ? t('lessons.status.done') : inProgress ? t('lessons.status.inProgress', { step: savedIndex + 1 }) : mode === 'review' ? t('lessons.status.review') : t('lessons.status.practice');
-    return `<button class="lesson-card theme-${theme.kind} ${done ? 'done' : ''} ${inProgress ? 'in-progress' : ''}" data-lesson="${item.number}"><span class="lesson-number">${done ? '✓' : inProgress ? '●' : item.number}</span><span class="lesson-emblem" aria-hidden="true">${theme.icon}</span><span><small class="lesson-category">${t('theme.' + theme.kind)}</small><strong>${escapeHtml(item.title)}</strong><small class="lesson-status">${status}</small></span></button>`;
+    // Done/in-progress lessons keep showing their own lesson number alongside the status icon
+    // (stacked: icon on top, number below), instead of the icon replacing the number entirely.
+    const numberBadge = done
+      ? `<span class="lesson-number-icon">✓</span><span class="lesson-number-value">${item.number}</span>`
+      : inProgress
+      ? `<span class="lesson-number-icon">●</span><span class="lesson-number-value">${item.number}</span>`
+      : item.number;
+    return `<button class="lesson-card theme-${theme.kind} ${done ? 'done' : ''} ${inProgress ? 'in-progress' : ''}" data-lesson="${item.number}"><span class="lesson-number">${numberBadge}</span><span class="lesson-emblem" aria-hidden="true">${theme.icon}</span><span><small class="lesson-category">${t('theme.' + theme.kind)}</small><strong>${escapeHtml(item.title)}</strong><small class="lesson-status">${status}</small></span></button>`;
   }); })().join('')}</section>`;
   document.querySelector('#home-button').addEventListener('click', showHome);
   app.querySelectorAll('[data-lesson]').forEach(button => button.addEventListener('click', () => startLesson(mode, Number(button.dataset.lesson))));
