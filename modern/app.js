@@ -724,6 +724,38 @@ async function loadContents() {
 // read-only .DAT files are never edited, so those cases are corrected here instead,
 // keyed by mode, lesson number, file part ('' = base, 'B', 'C'…) and the DAT's own
 // internal screen id.
+// A few original .DAT screens have the student type a PNR-retrieval entry, but the file
+// never captured what the system would actually show in response -- the surname was used
+// only as a one-off example in the instructional text, with no PNR ever authored for it
+// anywhere else in the lesson. The original, read-only .DAT files are never edited, so a
+// plausible example PNR is supplied here instead, as a fully authentic-looking numbered
+// capture (a real "RP/.../ " header plus numbered name/segment/contact/ticketing lines) in
+// exactly the format this same lesson already uses for its other worked examples, so the
+// engine's own PNR synthesis (extractPnrCapture) renders it identically to a real capture.
+// Keyed the same way as ANSWER_FIXES/TEXT_FIXES.
+const SCREEN_OUTPUT_FIXES = {
+  // Classroom lesson 16, screen id3 (paso 4): the previous screen (id2) has the student
+  // type RT/COLBRIDGE as the answer to "What entry would be used to retrieve the PNR for
+  // the surname Colbridge?", but no Colbridge PNR exists anywhere in LSN16/LSN16B/LSN16C --
+  // the file moves straight on to a new, unrelated retrieval exercise (Rouss) without ever
+  // showing what that command would have returned. This screen already immediately follows
+  // (paso 4 is the very next step after paso 3's RT/COLBRIDGE answer), so the missing
+  // response is added here, using the same office code and layout this lesson's other
+  // examples (Rouss, Sicolius, Rhetcher) already use, with its own distinct locator, date,
+  // flight and phone number so it reads as its own real reservation rather than a copy.
+  'classroom-16--3': [
+    'RP/PARAF2330/PARAF2330          0999ZZ 02MAR /1012Z   F4QK9B',
+    '  1.COLBRIDGE/ANNE MRS',
+    '  2  AF1180 Y 15MAR 7 CDGNCE HK1            0730  0850   *1A/',
+    '  3 AP PAR 01 42 96 33 20-B',
+    '  4 TK TL05MAR/PARAF2330',
+  ],
+};
+function applyOutputFix(mode, number, part, screen) {
+  const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
+  if (fix) { screen.output = fix; screen.hasSegmentDetail = false; }
+  return screen;
+}
 const ANSWER_FIXES = {
   'classroom-14--9': ['OSIB 1CHD AGED 9/P3'],
   // This lesson's own earlier screens (id 1, 2, 4) accept every equivalent way to write
@@ -1045,7 +1077,7 @@ async function loadLesson(mode, number) {
       if (part === '') throw new Error(t('lesson.loadError', { number }));
       break;
     }
-    const parsed = parseLesson(await response.text()).map(screen => applyClearFix(mode, number, part, applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, screen))));
+    const parsed = parseLesson(await response.text()).map(screen => applyClearFix(mode, number, part, applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, applyOutputFix(mode, number, part, screen)))));
     screens = screens.concat(applyScreenSplits(mode, number, part, parsed));
   }
   return screens;
