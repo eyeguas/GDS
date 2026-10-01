@@ -1061,6 +1061,16 @@ const SCREEN_CLEAR_FIXES = new Set([
   // still-accumulated availability display from the last exercise (screen id0) before this
   // closing screen. A pure closing message has no reason to keep showing it.
   'classroom-5-C-4',
+  // Classroom lesson 17, part B, screen id 9: "What entry would be used to cancel all
+  // consecutive elements from 5 through 9?" -- the first of a run of pure cancellation-syntax
+  // review questions (XE.../XI...) that follow the transaction ending at screen id 8. That
+  // screen's own real output ("END OF TRANSACTION COMPLETE - G2FW6U") is the correct response
+  // to id 7's RFP;ET entry and belongs there, but it isn't a one-line "IGNORED"-style ephemeral
+  // confirmation (see isEphemeralConfirmation), so nothing else clears it before these later,
+  // unrelated review questions -- it would otherwise keep showing, unchanged, all the way to
+  // the end of the lesson. These questions have no real system effect of their own, so there is
+  // nothing to show here.
+  'classroom-17-B-9',
 ]);
 function applyClearFix(mode, number, part, screen) {
   if (!SCREEN_CLEAR_FIXES.has(`${mode}-${number}-${part}-${screen.id}`)) return screen;
