@@ -1260,11 +1260,21 @@ function canonicalApAnswer(answers) {
   // answer like "APBCN -H/P1" contains a digit too, but only in its passenger
   // association suffix -- it is exactly the phoneless bug this feature must not
   // paper over. Only a phone number of a real, dialable length counts.
+  // Several lessons (e.g. agency-14's Strijland business phone) accept both a bare
+  // "APAMS 020 228166-B" and a passenger-associated "APAMS 020 228166-B/P1" for the
+  // very same entry -- the question itself names a specific passenger ("Mr.
+  // Strijland's business telephone"), so the associated form is the more complete,
+  // more correct one to display. Scanning every candidate (instead of stopping at the
+  // first phone-bearing answer) and preferring one that carries a /Pn association means
+  // the synthesized AP line keeps that association whenever the lesson's own answer key
+  // offers it, rather than silently settling for the first, less specific variant.
+  let best = null, bestParsed = null;
   for (const answer of answers) {
     const parsed = parseApCommand(answer);
-    if (parsed && parsed.phone.replace(/\D/g, '').length >= 5) return answer;
+    if (!parsed || parsed.phone.replace(/\D/g, '').length < 5) continue;
+    if (!best || (parsed.assoc && !bestParsed.assoc)) { best = answer; bestParsed = parsed; }
   }
-  return null;
+  return best;
 }
 function buildApContactDisplay(command, startCount = 0) {
   const parsed = parseApCommand(command);
