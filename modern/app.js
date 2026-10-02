@@ -907,6 +907,42 @@ const ANSWER_FIXES = {
   // form the Review quiz for lesson 13 already uses for the same scenario ("RMADV FARE
   // INCR/10MAY").
   'agency-14--13': ['RMPSGR ADV FARE INCR/10MAR'],
+  // Agency lesson 14, screens id 1, 3, 5 and 14: the same bare-placeholder bug, but for OSI
+  // (special-service) entries rather than remarks. Each screen's own scenario calls for a
+  // specific OSI message (an elderly passenger, a first-time flyer, a VIP, a child's age),
+  // yet the recorded answer is only ever the bare "OS<carrier>" transaction code with no
+  // message text at all -- confirmed as a genuine source-data gap, not a parsing issue, by
+  // these same screens' own captured "ignore" echoes two steps later (ids 4 and 6), which
+  // show the PNR's OS line as literally blank ("  3 OS ", "  4 OS "). Rather than invent
+  // wording, each fix reuses the exact phrasing this curriculum already teaches for the
+  // identical situation in Classroom lesson 14 (OSI fundamentals) and its own review quiz
+  // (Q14.DAT), including that material's own carrier-code and passenger-association
+  // conventions:
+  // - id1 (LEBEAUX, elderly passenger, carrier BA, single pax): Q14.DAT's own elderly+BA
+  //   scenario (id2) accepts exactly these variants.
+  // - id3 (WALSH, first-time air passenger, carrier SK, single pax): Q14.DAT's own
+  //   first-time-flyer scenario (id6) accepts exactly these variants (carrier substituted).
+  // - id5 (LOPEZ, VIP Mexican ambassador, carrier TP, 2 passengers -- the ambassador is
+  //   passenger 1): Classroom lesson 14's own worked VIP example (id12, also a 2-passenger
+  //   PNR) teaches the "/P1" passenger-association suffix for exactly this shape of
+  //   scenario, so it carries over here too.
+  // - id14 (Strijland, child aged 9, carrier KL, 3 passengers -- the child is passenger 3):
+  //   Q14.DAT's own child-age scenario (id0) is also a 3-passenger PNR with the child as
+  //   passenger 3, accepting exactly these variants (carrier substituted).
+  'agency-14--1': [
+    'OSBA ELDERLY PASSENGER', 'OSBA ELDERLY PSGR', 'OS BA ELDERLY PASSENGER', 'OS BA ELDERLY PSGR',
+    'OSBA ELDERLY', 'OS BA ELDERLY', 'OSBA ELDERLY PAX', 'OS BA ELDERLY PAX',
+  ],
+  'agency-14--3': [
+    'OSSK FIRST TIME AIR PSGR', 'OSSK FIRST TIME AIR TVLR', 'OSSK FIRST TIME AIR PASSENGER',
+    'OS SK FIRST TIME AIR PSGR', 'OS SK FIRST TIME AIR TVLR', 'OS SK FIRST TIME AIR PASSENGER',
+  ],
+  'agency-14--5': ['OSTP VIP MEXICAN AMBASSADOR/P1', 'OS TP VIP MEXICAN AMBASSADOR/P1'],
+  'agency-14--14': [
+    'OSKL 1CHD AGED 9/P3', 'OSKL AGED 9/P3', 'OS KL AGED 9/P3', 'OSKL 9YRS/P3', 'OSKL9YRS/P3', 'OS KL 9YRS/P3',
+    'OSKL 1CHD AGE 9/P3', 'OSKL 1CHD 9 YRS/P3', 'OSKL 1CHD 9YRS/P3',
+    'OS KL 1CHD AGED 9/P3', 'OS KL 1CHD AGE 9/P3', 'OS KL 1CHD 9 YRS/P3', 'OS KL 1CHD 9YRS/P3',
+  ],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
