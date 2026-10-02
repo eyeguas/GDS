@@ -1189,6 +1189,16 @@ function isEphemeralConfirmation(output) {
 function isTransactionBanner(line) {
   return /^END OF TRANSACTION/i.test(line.trim());
 }
+// A numbered OS (optional-service) line with no message text at all is never informative --
+// some lessons' own .DAT only ever captured the transaction code with no free text (the same
+// bare-placeholder gap ANSWER_FIXES already corrects for the accepted answer itself), leaving
+// a stray "N OS" stub in that screen's own captured output. Filtering it out of what gets
+// displayed, wherever it turns up, means it can never show as an empty, unexplained line, and
+// never silently stand in for (or duplicate) the real, complete OS item the engine's own
+// canonicalOsAnswer/buildOsDisplay synthesis shows instead once that item has a real answer.
+function isBareOsStub(line) {
+  return /^\d+\s+OS\s*$/.test(line.trim());
+}
 // Several lessons ask for an NM (name) entry and then never capture what the
 // terminal looked like afterward -- the next captured screen is often the next
 // unrelated instruction (or another "Ignore the transaction." prompt) with no
@@ -1375,6 +1385,31 @@ function buildRmDisplay(command, startCount = 0) {
   if (!parsed) return [];
   return [`  ${startCount + 1} ${parsed.code} ${parsed.text}`];
 }
+// An OSI (optional-service) entry is "OS" + a two-character carrier code + the free-text
+// message, e.g. "OSBA ELDERLY PASSENGER" or "OS BA ELDERLY PASSENGER". Requiring a real,
+// non-empty message after the carrier code (not just the bare transaction code) means this
+// never matches one of the bare "OS<carrier>" placeholders some lessons' own .DAT files
+// record for a still-unfixed data gap -- only a genuinely complete OSI entry ever synthesizes
+// a display line, so this stays inert everywhere that gap hasn't been (or doesn't need to be)
+// corrected.
+function parseOsCommand(command) {
+  const trimmed = command.trim().toUpperCase().replace(/\s+/g, ' ');
+  const match = /^OS\s*([A-Z0-9]{2})\s+(\S.*)$/.exec(trimmed);
+  if (!match) return null;
+  return { carrier: match[1], text: match[2].trim() };
+}
+function canonicalOsAnswer(answers) {
+  let best = null;
+  for (const answer of answers) {
+    if (parseOsCommand(answer) && (!best || answer.length > best.length)) best = answer;
+  }
+  return best;
+}
+function buildOsDisplay(command, startCount = 0) {
+  const parsed = parseOsCommand(command);
+  if (!parsed) return [];
+  return [`  ${startCount + 1} OS ${parsed.carrier} ${parsed.text}`];
+}
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
 // echo it again, apparently for its own internal highlighting, not as a second visible
@@ -1460,6 +1495,7 @@ function terminalForCurrentScreen() {
   let addressLines = []; // synthesized/captured AB/AM address element(s), shown after AP
   let segmentLines = [];
   let remarkLines = []; // synthesized RM/RC remark(s), shown last among the numbered items
+  let osLines = []; // synthesized OS (optional-service) item(s), shown among the numbered items
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
   for (let index = 0; index <= session.index; index += 1) {
@@ -1471,7 +1507,7 @@ function terminalForCurrentScreen() {
     // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
     // catches those too, so synthesized state resets there just the same.
     if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; plainTerminal = null; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; plainTerminal = null; itemCount = 0;
     }
     // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
     // step's accepted answer unconditionally -- even when the CURRENT screen also carries
@@ -1486,6 +1522,7 @@ function terminalForCurrentScreen() {
       const abAmAnswer = canonicalAbAmAnswer(previous.answers);
       const rfAnswer = canonicalRfAnswer(previous.answers);
       const rmAnswer = canonicalRmAnswer(previous.answers);
+      const osAnswer = canonicalOsAnswer(previous.answers);
       if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
@@ -1503,6 +1540,9 @@ function terminalForCurrentScreen() {
       } else if (rmAnswer) {
         const newLines = buildRmDisplay(rmAnswer, itemCount);
         if (newLines.length) { remarkLines = remarkLines.concat(newLines); itemCount += newLines.length; }
+      } else if (osAnswer) {
+        const newLines = buildOsDisplay(osAnswer, itemCount);
+        if (newLines.length) { osLines = osLines.concat(newLines); itemCount += newLines.length; }
       }
     }
     // Some lessons (e.g. LSN11) bundle a type-9 CLEAR/CLS/IGNORED marker into the SAME screen
@@ -1517,7 +1557,7 @@ function terminalForCurrentScreen() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; itemCount = 0; plainTerminal = null;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; itemCount = 0; plainTerminal = null;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -1532,19 +1572,20 @@ function terminalForCurrentScreen() {
         if (capture) {
           header = capture.header; rfLine = null; noticeLine = null;
           nameLines = capture.nameLines; segmentLines = capture.segmentLines;
-          apLines = capture.apLines; tkLines = capture.tkLines; addressLines = capture.addressLines; remarkLines = [];
+          apLines = capture.apLines; tkLines = capture.tkLines; addressLines = capture.addressLines; remarkLines = []; osLines = [];
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
           // Too rich to redistribute (e.g. a bare, unnumbered re-echo of the same PNR that
           // happens to repeat its header) -- shown as captured. Unlike name/segment/AP/TK,
           // which this bare echo always repeats for real, the original .DAT convention never
-          // re-echoes a remark here, so any already-entered remark(s) would otherwise vanish
-          // from every later screen that re-shows this same PNR this way. Keeping remarkLines
-          // (and itemCount, so a later remark keeps numbering from where these left off) and
-          // appending them after the captured lines shows this exactly as a real terminal
-          // would: the echoed PNR, with its remarks still in place at the end.
-          plainTerminal = screen.output.concat(remarkLines);
+          // re-echoes a remark (or an OS item) here, so any already-entered remark(s)/OS
+          // item(s) would otherwise vanish from every later screen that re-shows this same PNR
+          // this way. Keeping remarkLines and osLines (and itemCount, so a later item keeps
+          // numbering from where these left off) and appending them, in their real PNR order,
+          // after the captured lines shows this exactly as a real terminal would: the echoed
+          // PNR, with its remarks and OS items still in place at the end.
+          plainTerminal = screen.output.filter(line => !isBareOsStub(line)).concat([...remarkLines, ...osLines].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0)));
           header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = [];
         }
       } else if (screen.hasSegmentDetail) {
@@ -1555,8 +1596,8 @@ function terminalForCurrentScreen() {
         // than replacing them with this unnumbered echo. Only genuinely new content (no
         // established base yet, e.g. LSN9B/LSN10's very first segment line) is shown, and
         // -- matching the original .DAT's own lack of a number for it -- uncounted.
-        const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines, ...addressLines, ...remarkLines].map(normalizePnrLine));
-        const newLines = screen.output.filter(line => !known.has(normalizePnrLine(line)));
+        const known = new Set([...nameLines, ...segmentLines, ...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines].map(normalizePnrLine));
+        const newLines = screen.output.filter(line => !known.has(normalizePnrLine(line)) && !isBareOsStub(line));
         if (newLines.length === 1 && isTransactionBanner(newLines[0])) {
           // A real one-line transaction-status confirmation (e.g. "END OF TRANSACTION
           // COMPLETE - <locator>") bundled in the same screen as older, already-known
@@ -1577,9 +1618,9 @@ function terminalForCurrentScreen() {
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; itemCount = 0;
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || rfLine || noticeLine) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, or a previously captured header/segment) is already under
       // way -- that takes over, matching the original behavior for lessons that build up a
@@ -1605,15 +1646,15 @@ function terminalForCurrentScreen() {
   // actually started.
   const rfPart = rfLine ? [rfLine] : [];
   const noticePart = noticeLine ? [noticeLine] : [];
-  // AP, TK, AB/AM and RM/RC are each their own bucket (populated whenever that element's
+  // AP, TK, AB/AM, RM/RC and OS are each their own bucket (populated whenever that element's
   // command is answered, in no particular order relative to each other -- a lesson may well
-  // teach a remark before an address, or an address before ticketing), but every line in all
-  // four already carries the real PNR item number it was assigned when itemCount advanced for
+  // teach a remark before an address, or an OSI entry before ticketing), but every line in all
+  // five already carries the real PNR item number it was assigned when itemCount advanced for
   // it. Concatenating the buckets in a fixed order can then show a later, higher-numbered item
   // ahead of an earlier one; sorting the combined set by that leading number is what actually
   // guarantees the ascending order a real terminal always shows, regardless of which order the
-  // lesson happens to teach these four elements in.
-  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines]
+  // lesson happens to teach these five elements in.
+  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines]
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
   return [...rfPart, ...noticePart, ...nameLines, ...trailingItems];
