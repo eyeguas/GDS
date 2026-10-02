@@ -817,6 +817,12 @@ const ANSWER_FIXES = {
   'agency-13--15': ['RFP', 'RFMRREINE'],
   'agency-14--10': ['APAMS 020 228166-B', 'APAMS 020 228166-B/P1'],
   'agency-14--11': ['APAMS 020 232010-H'],
+  // Agency lesson 14, screen id 15 (the RF entry step the app shows as "step 16"): Mr.
+  // Strijland is one of the PNR's own three passengers (Strijland/L/B/N, screen id 9), so
+  // the shorthand "RFP" the .DAT recorded is valid, but per the lesson's own convention
+  // (classroom-11--17, agency-11--1, agency-11--12, agency-12--9 above) the named form is
+  // always an accepted alternative whenever the requester really is the PNR's passenger.
+  'agency-14--15': ['RFP', 'RFMRSTRIJLAND', 'RF MRSTRIJLAND'],
   'agency-15--11': ['APFRA 069 2302882-B'],
   'agency-15--12': ['APFRA 069 638430-H'],
   'classroom-10-B-2': ['APCHI 02 5312636-B'],
