@@ -1472,21 +1472,21 @@ function buildFqdHeaderLine(command) {
   if (!parsed) return null;
   return `FQD${parsed.pair}/${parsed.needsD ? 'D' : ''}${parsed.date}`;
 }
-// Classroom lesson 21 walks the student through reading a fare table using its own one
-// REAL captured display (screen id 9, Paris-London) across several following steps -- but
-// two steps earlier (ids 7 and 8) ask the student to enter an FQD command whose response
-// the original .DAT never captured at all, so buildFqdHeaderLine above would otherwise
-// leave just a bare one-line echo there, with no table to look at before the walkthrough
-// starts. For exactly these two steps a full illustrative fare table is synthesized
-// instead, built by taking LSN21's own real PARLON table (every column, every run of
-// spacing, letter for letter) and substituting only the city pair, date, mileage, fare
-// basis codes, prices and airline codes -- so the layout is provably identical to the one
-// real table this lesson already teaches from. The fares themselves are clearly
-// fictional/pedagogical, like every PNR, phone number and remark already synthesized
-// elsewhere in this file -- never presented as live pricing. Keyed by the screen's
-// position in the already-concatenated lesson (mode-number-index) rather than screen.id,
-// because id restarts at 0 in every split .DAT part (LSN21B continues after LSN21) and
-// both these screens live in the base part anyway.
+// Classroom lesson 21 walks the student through reading a fare table using REAL captured
+// displays (LSN21 screen id 9, Paris-London; LSN21B screen id 3, London-Amsterdam) across
+// several following steps each time -- but a handful of earlier steps ask the student to
+// enter an FQD command whose response the original .DAT never captured at all, so
+// buildFqdHeaderLine above would otherwise leave just a bare one-line echo there, with no
+// table to look at before the walkthrough starts. For exactly these steps a full
+// illustrative fare table is synthesized instead, built by taking the lesson's own nearest
+// REAL table (every column, every run of spacing, letter for letter) and substituting only
+// the city pair, date, mileage, fare basis codes, prices, currency and airline codes -- so
+// the layout is provably identical to a real table this same lesson already teaches from.
+// The fares themselves are clearly fictional/pedagogical, like every PNR, phone number and
+// remark already synthesized elsewhere in this file -- never presented as live pricing.
+// Keyed by the screen's position in the already-concatenated lesson (mode-number-index)
+// rather than screen.id, because id restarts at 0 in every split .DAT part (LSN21B
+// continues after LSN21).
 const FQD_FAKE_SCREENS = {
   'classroom-21-7': [
     "FQDMADCAI/20OCT                                                 ",
@@ -1509,6 +1509,28 @@ const FQD_FAKE_SCREENS = {
     " 03 KLX3MN                 229    @   S01APR 31OCT -  SU  1M IB R",
     " 04 YFLEX                  340    @   S01JAN 31OCT -  SU  1M LH R",
     ">                                                   PAGE 1/ 1"
+  ],
+  // LSN21B screen id 2 (paso 20): same gap, one step later in the lesson -- the student is
+  // asked for FQDSTONCE/31AUG**28SEP at paso 19, but paso 20's own screen immediately moves
+  // on to a brand new question (the London-Amsterdam one) without ever showing a response
+  // table for the Stockholm-Nice command. Modeled on LSN21B's own real table two steps later
+  // (screen id 3, paso 21, FQDLONAMS) rather than LSN21's PARLON table, because this gap sits
+  // in the same split .DAT part and that real table uses this part's own row layout (no
+  // leading space, GBP currency column) -- reused here with ARNNCE as the "ALSO SEE"
+  // alternate, since the lesson's own accepted-answer list for paso 19 (FQDARNNCE/...)
+  // already treats ARN as STO's co-terminal, and with the currency column relabeled SEK
+  // (Stockholm's own local currency, not a free invention) rather than reusing GBP.
+  'classroom-21-19': [
+    "FQDSTONCE/31AUG**28SEP                                     ",
+    "ALSO SEE ARNNCE                                                 ",
+    "ROE 10.5200 ROUNDING TO THE NEAREST 1.00 SEK                    ",
+    "31AUG22**28SEP22/STONCE/NLX;EH/TPM  1243/MPM  1492              ",
+    "LN FARE BASIS    OW   SEK  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 VLX1                    1850  @  S01SEP 28SEP  - SU   1M SK R",
+    "02 HRT6MN                  2140  @  S15SEP 28SEP  - SU   1M AF R",
+    "03 SAVER                   2490  @     -      -   - SU   3M SK R",
+    "04 KLX3MN                  3120  @  S01SEP 28SEP  - SU   1M AF R",
+    ">                                                  PAGE 1/ 1"
   ],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
