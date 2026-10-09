@@ -1472,6 +1472,45 @@ function buildFqdHeaderLine(command) {
   if (!parsed) return null;
   return `FQD${parsed.pair}/${parsed.needsD ? 'D' : ''}${parsed.date}`;
 }
+// Classroom lesson 21 walks the student through reading a fare table using its own one
+// REAL captured display (screen id 9, Paris-London) across several following steps -- but
+// two steps earlier (ids 7 and 8) ask the student to enter an FQD command whose response
+// the original .DAT never captured at all, so buildFqdHeaderLine above would otherwise
+// leave just a bare one-line echo there, with no table to look at before the walkthrough
+// starts. For exactly these two steps a full illustrative fare table is synthesized
+// instead, built by taking LSN21's own real PARLON table (every column, every run of
+// spacing, letter for letter) and substituting only the city pair, date, mileage, fare
+// basis codes, prices and airline codes -- so the layout is provably identical to the one
+// real table this lesson already teaches from. The fares themselves are clearly
+// fictional/pedagogical, like every PNR, phone number and remark already synthesized
+// elsewhere in this file -- never presented as live pricing. Keyed by the screen's
+// position in the already-concatenated lesson (mode-number-index) rather than screen.id,
+// because id restarts at 0 in every split .DAT part (LSN21B continues after LSN21) and
+// both these screens live in the base part anyway.
+const FQD_FAKE_SCREENS = {
+  'classroom-21-7': [
+    "FQDMADCAI/20OCT                                                 ",
+    " ROE 0.92840 ROUNDING UP TO 1.00 EUR                             ",
+    " 20OCT22**20OCT22/MADCAI/NLX;EH/TPM  1803/MPM  2164              ",
+    " LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    " 01 VLX1                   268    @   S01OCT 31DEC -  SU  1M MS R",
+    " 02 HRT6MIB                312    @   S15SEP 31DEC -  SU  1M IB R",
+    " 03 HLX3MN                 405    @   S01NOV 31DEC -  SU  1M IB R",
+    " 04 YFLEX                  560    @   S01DEC 31DEC -  SU  1M MS R",
+    ">                                                   PAGE 1/ 1"
+  ],
+  'classroom-21-8': [
+    "FQDFRAMAD/25APR                                                 ",
+    " ROE 1.08350 ROUNDING UP TO 1.00 EUR                             ",
+    " 25APR22**25APR22/FRAMAD/NLX;EH/TPM   903/MPM  1084              ",
+    " LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    " 01 QLX1                   165    @   S15MAR 31OCT -  SU  1M UX R",
+    " 02 HRT6MLH                198    @   S01MAR 31OCT -  SU  1M LH R",
+    " 03 KLX3MN                 229    @   S01APR 31OCT -  SU  1M IB R",
+    " 04 YFLEX                  340    @   S01JAN 31OCT -  SU  1M LH R",
+    ">                                                   PAGE 1/ 1"
+  ],
+};
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
 // echo it again, apparently for its own internal highlighting, not as a second visible
@@ -1560,14 +1599,16 @@ function terminalForCurrentScreen() {
   let osLines = []; // synthesized OS (optional-service) item(s), shown among the numbered items
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
-  let fqdLine = null; // synthesized FQD fare-display echo -- unlike the others above, this is
+  let fqdLines = null; // synthesized FQD fare-display echo -- unlike the others above, this is
   // never cumulative: a fare display is a one-off lookup, not a PNR element that stays on
   // screen afterward, so this is recomputed from scratch every iteration (reset immediately
-  // below) and only ever reflects the step immediately before the one being viewed.
+  // below) and only ever reflects the step immediately before the one being viewed. Usually
+  // just the single echoed header line (buildFqdHeaderLine); FQD_FAKE_SCREENS above overrides
+  // a couple of specific steps with a full illustrative fare table instead.
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
     const previous = index > 0 ? session.screens[index - 1] : null;
-    fqdLine = null;
+    fqdLines = null;
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us. Some
     // lessons (e.g. LSN11) mark the same "transaction is over" moment with a bare type-9
@@ -1612,7 +1653,8 @@ function terminalForCurrentScreen() {
         const newLines = buildOsDisplay(osAnswer, itemCount);
         if (newLines.length) { osLines = osLines.concat(newLines); itemCount += newLines.length; }
       } else if (fqdAnswer) {
-        fqdLine = buildFqdHeaderLine(fqdAnswer);
+        const fakeScreen = FQD_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
+        fqdLines = fakeScreen || [buildFqdHeaderLine(fqdAnswer)];
       }
     }
     // Some lessons (e.g. LSN11) bundle a type-9 CLEAR/CLS/IGNORED marker into the SAME screen
@@ -1690,7 +1732,7 @@ function terminalForCurrentScreen() {
         plainTerminal = screen.output;
         header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine || fqdLine) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine || (fqdLines && fqdLines.length)) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, a previously captured header/segment, or a fare-display
       // echo) is already under way -- that takes over, matching the original behavior for
@@ -1727,7 +1769,7 @@ function terminalForCurrentScreen() {
   const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines]
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
-  const fqdPart = fqdLine ? [fqdLine] : [];
+  const fqdPart = fqdLines || [];
   return [...fqdPart, ...rfPart, ...noticePart, ...nameLines, ...trailingItems];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
