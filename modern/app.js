@@ -1457,9 +1457,20 @@ function buildOsDisplay(command, startCount = 0) {
 // month-only period, where D is not optional, just like "FQDLISCCS/DJUN" shows).
 function parseFqdCommand(command) {
   const trimmed = command.trim().toUpperCase().replace(/\s+/g, '');
-  const match = /^FQD([A-Z]{6})\/(D)?(\S+)$/.exec(trimmed);
-  if (!match) return null;
-  return { pair: match[1], date: match[3], needsD: !/^\d/.test(match[3]) };
+  // Full form: an explicit city pair and date (optionally a range, or the /D month-only form).
+  let match = /^FQD([A-Z]{6})\/(D)?(\S+)$/.exec(trimmed);
+  if (match) return { pair: match[1], dest: null, date: match[3], needsD: !/^\d/.test(match[3]) };
+  // The date may be omitted entirely -- the lesson's own taught shorthand for "today" (e.g.
+  // classroom-21's own FQDLONMUC, FQDPARMAD; Q21's FQDLISSTO/FQDLISARN have a date and so hit
+  // the branch above instead). Still a full 6-letter pair, just with nothing after it.
+  match = /^FQD([A-Z]{6})$/.exec(trimmed);
+  if (match) return { pair: match[1], dest: null, date: null, needsD: false };
+  // The origin may ALSO be omitted -- defaults to the city of the terminal the entry is typed
+  // at, per the lesson's own explanation (FQDATH example) -- leaving just a bare 3-letter
+  // destination with no pair and no date at all (e.g. FQDTYO, FQDNRT, FQDSYD, Q21's FQDNBO).
+  match = /^FQD([A-Z]{3})$/.exec(trimmed);
+  if (match) return { pair: null, dest: match[1], date: null, needsD: false };
+  return null;
 }
 function canonicalFqdAnswer(answers) {
   for (const answer of answers) {
@@ -1470,6 +1481,8 @@ function canonicalFqdAnswer(answers) {
 function buildFqdHeaderLine(command) {
   const parsed = parseFqdCommand(command);
   if (!parsed) return null;
+  if (parsed.dest) return `FQD${parsed.dest}`;
+  if (!parsed.date) return `FQD${parsed.pair}`;
   return `FQD${parsed.pair}/${parsed.needsD ? 'D' : ''}${parsed.date}`;
 }
 // Classroom lesson 21 walks the student through reading a fare table using REAL captured
