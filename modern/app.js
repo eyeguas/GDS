@@ -496,7 +496,20 @@ function classifyLine(raw) {
     const content = cleanupTokens(raw);
     return content ? { kind: 'legend', text: content } : { kind: 'blank' };
   }
-  const defMatch = raw.match(/^\s*([A-Z][A-Z0-9/]{0,7})\^?\s{3,}(\S.*?)(?:\s{3,}([A-Z][A-Z0-9/]{0,7})\^?\s{3,}(\S.*))?$/);
+  // The original DOS source pads each code to a shared column width, not a fixed gap: a
+  // short one-letter code (e.g. "M^") gets 3 spaces to reach that column, but a two-letter
+  // code (e.g. "AP^", "OW^", "EE^", "BB^") only needs 2 -- both are still clearly a
+  // code/description boundary, not prose. Requiring \s{3,} missed every 2-space case (all
+  // four rows of LSN21's own secondary-fare-code glossary, and LSN16B's history-code
+  // glossary), silently falling through to flat, run-together prose where a reader can no
+  // longer tell which description belongs to which code. \s{2,} still never matches
+  // ordinary single-spaced prose that happens to start with a short all-caps token. The gap
+  // right after the SECOND code is loosened further still, to a single space: LSN21's own
+  // "BB^ Discounted (budget) fare" row only has one (every other gap in this same source
+  // uses 2-3, so this looks like a one-off alignment slip in the original DOS file, not a
+  // deliberate style), and by this point the second code has already been matched, so a
+  // single space here is in no danger of being mistaken for plain prose.
+  const defMatch = raw.match(/^\s*([A-Z][A-Z0-9/]{0,7})\^?\s{2,}(\S.*?)(?:\s{2,}([A-Z][A-Z0-9/]{0,7})\^?\s+(\S.*))?$/);
   if (defMatch) {
     const pairs = [{ code: defMatch[1], desc: cleanupTokens(defMatch[2]) }];
     if (defMatch[3]) pairs.push({ code: defMatch[3], desc: cleanupTokens(defMatch[4]) });
@@ -1426,6 +1439,39 @@ function buildOsDisplay(command, startCount = 0) {
   if (!parsed) return [];
   return [`  ${startCount + 1} OS ${parsed.carrier} ${parsed.text}`];
 }
+// FQD<city-pair>/[D]<date> requests a fare display. Unlike RM/OS/AP/TK -- single PNR
+// elements whose entire display line is just the command's own text, reformatted -- a real
+// fare table's rows (prices, fare basis codes, rules, validity dates) are never knowable
+// from the command alone, so synthesizing them would mean inventing airline fare data the
+// curriculum never actually taught. Some lessons (e.g. classroom-21's own "FQDMADCAI/20OCT"
+// and "FQDFRAMAD/25APR" drills) never captured any response at all for a query, leaving the
+// following step's own system-response box completely empty even though a real terminal
+// always echoes at least the request itself as the first line of its reply -- every other
+// real captured fare display in this same lesson confirms that ("FQDMUCBRU/10JUN",
+// "FQDLISCCS/DJUN", etc. all open with exactly their own echoed request). That echoed
+// header is the one part of the response that IS fully deterministic, so synthesizing just
+// that single line -- never any fare row beneath it -- fills the gap without fabricating
+// anything. The real system drops the optional "D" marker when the date starts with a
+// digit (several of this lesson's own real captures show a D-form answer still echoed
+// without the D), but keeps it when the date starts with a letter (e.g. "DJUN" for a
+// month-only period, where D is not optional, just like "FQDLISCCS/DJUN" shows).
+function parseFqdCommand(command) {
+  const trimmed = command.trim().toUpperCase().replace(/\s+/g, '');
+  const match = /^FQD([A-Z]{6})\/(D)?(\S+)$/.exec(trimmed);
+  if (!match) return null;
+  return { pair: match[1], date: match[3], needsD: !/^\d/.test(match[3]) };
+}
+function canonicalFqdAnswer(answers) {
+  for (const answer of answers) {
+    if (parseFqdCommand(answer)) return answer;
+  }
+  return null;
+}
+function buildFqdHeaderLine(command) {
+  const parsed = parseFqdCommand(command);
+  if (!parsed) return null;
+  return `FQD${parsed.pair}/${parsed.needsD ? 'D' : ''}${parsed.date}`;
+}
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
 // echo it again, apparently for its own internal highlighting, not as a second visible
@@ -1514,9 +1560,14 @@ function terminalForCurrentScreen() {
   let osLines = []; // synthesized OS (optional-service) item(s), shown among the numbered items
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
+  let fqdLine = null; // synthesized FQD fare-display echo -- unlike the others above, this is
+  // never cumulative: a fare display is a one-off lookup, not a PNR element that stays on
+  // screen afterward, so this is recomputed from scratch every iteration (reset immediately
+  // below) and only ever reflects the step immediately before the one being viewed.
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
     const previous = index > 0 ? session.screens[index - 1] : null;
+    fqdLine = null;
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us. Some
     // lessons (e.g. LSN11) mark the same "transaction is over" moment with a bare type-9
@@ -1539,6 +1590,7 @@ function terminalForCurrentScreen() {
       const rfAnswer = canonicalRfAnswer(previous.answers);
       const rmAnswer = canonicalRmAnswer(previous.answers);
       const osAnswer = canonicalOsAnswer(previous.answers);
+      const fqdAnswer = canonicalFqdAnswer(previous.answers);
       if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
@@ -1559,6 +1611,8 @@ function terminalForCurrentScreen() {
       } else if (osAnswer) {
         const newLines = buildOsDisplay(osAnswer, itemCount);
         if (newLines.length) { osLines = osLines.concat(newLines); itemCount += newLines.length; }
+      } else if (fqdAnswer) {
+        fqdLine = buildFqdHeaderLine(fqdAnswer);
       }
     }
     // Some lessons (e.g. LSN11) bundle a type-9 CLEAR/CLS/IGNORED marker into the SAME screen
@@ -1636,11 +1690,11 @@ function terminalForCurrentScreen() {
         plainTerminal = screen.output;
         header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine || fqdLine) {
       // No real output this step, but a synthesized display (from a received-from element,
-      // names/contacts/ticketing, or a previously captured header/segment) is already under
-      // way -- that takes over, matching the original behavior for lessons that build up a
-      // PNR through several unrelated instruction screens.
+      // names/contacts/ticketing, a previously captured header/segment, or a fare-display
+      // echo) is already under way -- that takes over, matching the original behavior for
+      // lessons that build up a PNR through several unrelated instruction screens.
       plainTerminal = null;
     }
     // else: no real output AND nothing synthesized either -- a purely explanatory screen
@@ -1673,7 +1727,8 @@ function terminalForCurrentScreen() {
   const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines]
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
-  return [...rfPart, ...noticePart, ...nameLines, ...trailingItems];
+  const fqdPart = fqdLine ? [fqdLine] : [];
+  return [...fqdPart, ...rfPart, ...noticePart, ...nameLines, ...trailingItems];
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
