@@ -1486,20 +1486,23 @@ function buildFqdHeaderLine(command) {
   return `FQD${parsed.pair}/${parsed.needsD ? 'D' : ''}${parsed.date}`;
 }
 // Classroom lesson 21 walks the student through reading a fare table using REAL captured
-// displays (LSN21 screen id 9, Paris-London; LSN21B screen id 3, London-Amsterdam) across
-// several following steps each time -- but a handful of earlier steps ask the student to
-// enter an FQD command whose response the original .DAT never captured at all, so
-// buildFqdHeaderLine above would otherwise leave just a bare one-line echo there, with no
-// table to look at before the walkthrough starts. For exactly these steps a full
-// illustrative fare table is synthesized instead, built by taking the lesson's own nearest
-// REAL table (every column, every run of spacing, letter for letter) and substituting only
-// the city pair, date, mileage, fare basis codes, prices, currency and airline codes -- so
-// the layout is provably identical to a real table this same lesson already teaches from.
-// The fares themselves are clearly fictional/pedagogical, like every PNR, phone number and
-// remark already synthesized elsewhere in this file -- never presented as live pricing.
-// Keyed by the screen's position in the already-concatenated lesson (mode-number-index)
-// rather than screen.id, because id restarts at 0 in every split .DAT part (LSN21B
-// continues after LSN21).
+// displays (LSN21 screen id 9, Paris-London; LSN21B screen id 3/4/5, London-Amsterdam;
+// LSN21B screen id 10, Amsterdam-Nice) across several following steps each time -- but
+// throughout the lesson several OTHER steps ask the student to enter an FQD command whose
+// response the original .DAT never captured at all, so buildFqdHeaderLine above would
+// otherwise leave just a bare one-line echo there, with no table to look at before moving
+// on. For every one of these gaps a full illustrative fare table is synthesized instead,
+// built by taking the lesson's own nearest structurally-matching REAL table (every column,
+// every run of spacing, letter for letter) and substituting only the city pair, date,
+// mileage, fare basis codes, prices, currency and airline codes -- so the layout is provably
+// identical to a real table this same lesson already teaches from. Where the implied route
+// has a genuinely multi-airport city (Paris, London, Rome, Milan...), an "ALSO SEE" line is
+// added using that city's own real-world airport codes, mirroring how the real PARLON/LONAMS
+// tables do the same. The fares themselves are clearly fictional/pedagogical, like every PNR,
+// phone number and remark already synthesized elsewhere in this file -- never presented as
+// live pricing. Keyed by the screen's position in the already-concatenated lesson
+// (mode-number-index) rather than screen.id, because id restarts at 0 in every split .DAT
+// part (LSN21B continues after LSN21).
 const FQD_FAKE_SCREENS = {
   'classroom-21-7': [
     "FQDMADCAI/20OCT                                                 ",
@@ -1544,6 +1547,148 @@ const FQD_FAKE_SCREENS = {
     "03 SAVER                   2490  @     -      -   - SU   3M SK R",
     "04 KLX3MN                  3120  @  S01SEP 28SEP  - SU   1M AF R",
     ">                                                  PAGE 1/ 1"
+  ],
+  // LSN21B screen id 6 (paso 24): the student has just been taught the no-date pair-only
+  // shorthand (FQDLONMUC). Modeled on the real LONAMS table three steps earlier (id3, paso
+  // 21) -- same origin city (LON), same GBP currency column, same "ALSO SEE" convention
+  // using LON's own real co-terminal codes (LGW/LHR/LTN) paired with the new destination.
+  'classroom-21-23': [
+    "FQDLONMUC                                                  ",
+    "ALSO SEE LGWMUC LHRMUC LTNMUC                                   ",
+    "ROE 0.84230 ROUNDING TO THE NEAREST 1.00 GBP                    ",
+    "10NOV22**10NOV22/LONMUC/NLX;EH/TPM   589/MPM   707              ",
+    "LN FARE BASIS    OW   GBP  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 VLX1                      79  @  S01JUL 31DEC  - SU   1M LH R",
+    "02 HRT6MN                    98  @  S15JUL 31DEC  - SU   1M BA R",
+    "03 SAVER                    115  @     -      -   - SU   3M LH R",
+    "04 KLX3MN                   142  @  S01JUL 31DEC  - SU   1M BA R",
+    ">                                                  PAGE 1/ 1",
+  ],
+  // LSN21B screen id 7 (paso 25): the destination-only shorthand (FQDTYO, implying the
+  // terminal's own city -- Madrid -- as the origin). Modeled on the real FRANRT table (id0,
+  // paso 18), the lesson's own example of an ultra-long-haul route to the same destination
+  // (Tokyo/Narita): same TPM-dots convention for a route this long, same unrestricted-fare
+  // row style, no "ALSO SEE" (matching FRANRT's own real table, which has none either). The
+  // top line echoes exactly what the student typed (just "FQDTYO", no pair) -- the full
+  // implied route only appears in the date-validity line below, exactly mirroring how
+  // FRANRT's own real header (NRT) differs from its own date-validity line's pair (TYO).
+  'classroom-21-24': [
+    "FQDTYO",
+    "ROE 1.19430 ROUNDING UP TO 1.00 EUR                             ",
+    "10NOV22**24NOV22/MADTYO/NLX;AP/TPM ...../MPM  9823              ",
+    "LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YR                      3180  @     -      -   - 14   -  IB M",
+    "02 Y                       3650  @     -      -   -  -   -  JL M",
+    "03 CR                      4100  @     -      -   - 14   -  IB M",
+    "04 C                       4700  @     -      -   -  -   -  AF M",
+  ],
+  // LSN21B screen id 8 (paso 26): a 3-month-period query (FQDFRADXB/DJUN). Modeled on the
+  // real AMSNCE table (id10, paso 28), the lesson's own example of this same "/D" 3-month
+  // style, including its EUR currency column and row layout.
+  'classroom-21-25': [
+    "FQDFRADXB/DJUN                                         ",
+    "ROE 4.03600 ROUNDING UP TO 1.00 EUR                            ",
+    "01JUN22**01SEP22/FRADXB/NLX;EH/TPM  2983/MPM  3580             ",
+    "LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                   320  @  S01JUN 15SEP  - SU   1M LH M",
+    "02 KLSX1M                   385  @  S01JUN 15SEP  - SU   1M EK M",
+    "03 HLPX3M                   450  @  S01JUN 15SEP  - SU   3M FZ R",
+    "04 BLPX3MN1                 520  @  S01JUN 15SEP  - SU   3M LH R",
+    ">                                                 PAGE  1/ 3   ",
+  ],
+  // LSN21B screen id 9 (paso 27): another 3-month-period query (FQDROMMAN/DMAR), same AMSNCE
+  // template as above, with an "ALSO SEE" line added for Rome's own real co-terminal codes
+  // (FCO/CIA) since the lesson's own question text explicitly says "all Rome airports".
+  'classroom-21-26': [
+    "FQDROMMAN/DMAR                                         ",
+    "ALSO SEE FCOMAN CIAMAN                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 EUR                            ",
+    "01MAR22**01JUN22/ROMMAN/NLX;EH/TPM  1150/MPM  1380             ",
+    "LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                    95  @  S01MAR 31MAY  - SU   1M AZ M",
+    "02 KLSX1M                   120  @  S01MAR 31MAY  - SU   1M BA M",
+    "03 HLPX3M                   145  @  S01MAR 31MAY  - SU   3M FR R",
+    "04 BLPX3MN1                 180  @  S01MAR 31MAY  - SU   3M U2 R",
+    ">                                                 PAGE  1/ 3   ",
+  ],
+  // LSN21B screen id 11 (paso 29) answers FQDDELAMS/30AUG, which is displayed at paso 30
+  // (screen id 12, the NEXT screen -- the synthesis mechanism always shows a command's
+  // response one screen after it was entered, same as every other entry in this table).
+  // Modeled on AMSNCE's own row templates (same LSN21B family), but with a single explicit
+  // query date (30AUG) rather than AMSNCE's own 3-month "/D" period -- matching how
+  // MADCAI/FRAMAD/LONMUC/PARMAD below all use a single date when the command names one.
+  // Currency follows the lesson's own established convention of using the ORIGIN city's
+  // local currency (Delhi's is INR, unlike the EUR/GBP/SEK origins used elsewhere).
+  'classroom-21-29': [
+    "FQDDELAMS/30AUG                                        ",
+    "ROE 83.5000 ROUNDING UP TO 1.00 INR                            ",
+    "30AUG22**30AUG22/DELAMS/NLX;EH/TPM  4012/MPM  4814             ",
+    "LN FARE BASIS    OW   INR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                 42000  @  S01AUG 28FEB  - SU   1M KL M",
+    "02 KLSX1M                 48500  @  S01AUG 28FEB  - SU   1M AI M",
+    "03 HLPX3M                 55000  @  S01AUG 28FEB  - SU   3M KL R",
+    "04 BLPX3MN1               68000  @  S01AUG 28FEB  - SU   3M AI R",
+    ">                                                 PAGE  1/ 3   ",
+  ],
+  // LSN21B screen id 12 (paso 30) answers FQDPARMAD (no-date pair-only shorthand), displayed
+  // at paso 31 (screen id 13). Modeled on AMSNCE's column style again (same LSN21B EUR
+  // family), with an "ALSO SEE" line for Paris's own real co-terminal codes (CDG/ORY), the
+  // same reasoning as PARLON's own real "ALSO SEE".
+  'classroom-21-30': [
+    "FQDPARMAD                                              ",
+    "ALSO SEE CDGMAD ORYMAD                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 EUR                            ",
+    "10NOV22**10NOV22/PARMAD/NLX;EH/TPM   650/MPM   780             ",
+    "LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                    85  @  S01JUL 31DEC  - SU   1M AF M",
+    "02 KLSX1M                   110  @  S01JUL 31DEC  - SU   1M IB M",
+    "03 HLPX3M                   135  @  S01JUL 31DEC  - SU   3M VY R",
+    "04 BLPX3MN1                 165  @  S01JUL 31DEC  - SU   3M AF R",
+    ">                                                 PAGE  1/ 1   ",
+  ],
+  // LSN21B screen id 13 (paso 31) answers FQDSYD (destination-only shorthand, implying
+  // Madrid-Sydney), displayed at paso 32 (screen id 14). Modeled on FRANRT's own ultra-long-
+  // haul style again (TPM-dots, flat unrestricted fare rows, no "ALSO SEE"), same
+  // header-echoes-exactly-what-was-typed convention as paso 25's FQDTYO entry above.
+  'classroom-21-31': [
+    "FQDSYD",
+    "ROE 1.19430 ROUNDING UP TO 1.00 EUR                             ",
+    "12NOV22**26NOV22/MADSYD/NLX;AP/TPM ...../MPM 13248              ",
+    "LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YR                      4850  @     -      -   - 14   -  QF M",
+    "02 Y                       5420  @     -      -   -  -   -  EK M",
+    "03 CR                      6100  @     -      -   - 14   -  QF M",
+    "04 C                       6980  @     -      -   -  -   -  SQ M",
+  ],
+  // LSN21B screen id 16 (paso 34): a date-range query (FQDLYSMUC/18MAY**22JUN). Modeled on
+  // LONAMS/STONCE's own date-range family, kept in EUR (both Lyon and Munich are EUR-zone,
+  // unlike LONAMS's GBP or STONCE's SEK).
+  'classroom-21-33': [
+    "FQDLYSMUC/18MAY**22JUN                                     ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 EUR                             ",
+    "18MAY22**22JUN22/LYSMUC/NLX;EH/TPM   372/MPM   450              ",
+    "LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 VLX1                      65  @  S01MAY 30JUN  - SU   1M LH R",
+    "02 HRT6MN                    85  @  S15MAY 30JUN  - SU   1M AF R",
+    "03 SAVER                    105  @     -      -   - SU   3M LH R",
+    "04 KLX3MN                   130  @  S01MAY 30JUN  - SU   1M U2 R",
+    ">                                                  PAGE 1/ 1",
+  ],
+  // LSN21B screen id 17 (paso 35, last gap in the lesson): a final 3-month-period query
+  // (FQDBRUMIL/DJAN). Modeled on AMSNCE once more, with an "ALSO SEE" line for Milan's own
+  // real co-terminal codes (MXP/LIN/BGY) -- the "MIL" metro code genuinely covers three
+  // separate airports, same reasoning as the Rome case above.
+  'classroom-21-34': [
+    "FQDBRUMIL/DJAN                                         ",
+    "ALSO SEE BRUMXP BRULIN BRUBGY                                   ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 EUR                            ",
+    "01JAN22**01APR22/BRUMIL/NLX;EH/TPM   650/MPM   780             ",
+    "LN FARE BASIS    OW   EUR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                    70  @  S01JAN 31MAR  - SU   1M SN M",
+    "02 KLSX1M                    95  @  S01JAN 31MAR  - SU   1M AZ M",
+    "03 HLPX3M                   120  @  S01JAN 31MAR  - SU   3M FR R",
+    "04 BLPX3MN1                 150  @  S01JAN 31MAR  - SU   3M SN R",
+    ">                                                 PAGE  1/ 3   ",
   ],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
