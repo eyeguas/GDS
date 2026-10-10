@@ -1760,7 +1760,26 @@ function extractPnrCapture(output) {
   }
   return { header, nameLines, segmentLines, apLines, tkLines, addressLines, itemCount: maxItem };
 }
-function terminalForCurrentScreen() {
+// A handful of real captured fare-display screens (AM21.DAT: agency lesson 21) were
+// recorded back when this training tool's own test data used 1997 as its "current" year --
+// every one of their date-validity lines reads e.g. "10JUN97**10JUN97/MUCBRU/...". Shown
+// as-is, a brand-new simulator would look decades out of date on the very first fare table
+// a student sees. The .DAT file itself is never touched (per this project's own hard rule),
+// so this cosmetic substitution happens here instead, on the rendered line only: any
+// DDMMMYY date token whose two-digit year falls in the legacy 90-99 range is rewritten to a
+// fixed, modern-looking value. The mapping is a straight same-length digit swap (97 -> 27,
+// i.e. "a year or two from now" relative to this project's own 2026 vintage) so column
+// alignment is never affected, and it is applied everywhere a line reaches the terminal
+// (not just AM21's own screens) so any future real capture with the same vintage problem is
+// covered automatically. Confirmed via a full-corpus search that "9[0-9]" immediately after
+// a month abbreviation occurs nowhere else in any .DAT file, so this can't misfire on an
+// unrelated number that merely happens to sit next to a month name.
+const LEGACY_YEAR_RE = /([0-3]\d(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))9[0-9]/g;
+function modernizeLegacyYear(line) {
+  if (typeof line !== 'string') return line;
+  return line.replace(LEGACY_YEAR_RE, (_match, ddmmm) => `${ddmmm}27`);
+}
+function terminalForCurrentScreenRaw() {
   // A real PNR keeps every element visible side by side -- name(s), then the segment(s),
   // then each contact phone as its own numbered line -- until the transaction is ignored
   // or ended. Some lessons (e.g. LSN9B) also replay the SAME real segment line on every
@@ -1951,6 +1970,9 @@ function terminalForCurrentScreen() {
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
   const fqdPart = fqdLines || [];
   return [...fqdPart, ...rfPart, ...noticePart, ...nameLines, ...trailingItems];
+}
+function terminalForCurrentScreen() {
+  return terminalForCurrentScreenRaw().map(modernizeLegacyYear);
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 // Which tokens the CURRENT screen's own wording names -- used only on explanation-only
