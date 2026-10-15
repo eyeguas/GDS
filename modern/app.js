@@ -1485,6 +1485,18 @@ function buildFqdHeaderLine(command) {
   if (!parsed.date) return `FQD${parsed.pair}`;
   return `FQD${parsed.pair}/${parsed.needsD ? 'D' : ''}${parsed.date}`;
 }
+// "FQDC/..." is a different family of command entirely -- it CHANGES one field of
+// the fare display already on screen (airline, class, round-trip...) rather than
+// requesting a brand new city pair, so parseFqdCommand above never matches it (there
+// is no pair/destination to parse). Classroom lesson 22 is the first lesson in this
+// curriculum to actually teach it (classroom-22-25/26/27 below), so this is kept
+// separate from canonicalFqdAnswer rather than folded into it.
+function canonicalFqdChangeAnswer(answers) {
+  for (const answer of answers) {
+    if (/^FQDC\//.test(answer.trim())) return answer;
+  }
+  return null;
+}
 // Classroom lesson 21 walks the student through reading a fare table using REAL captured
 // displays (LSN21 screen id 9, Paris-London; LSN21B screen id 3/4/5, London-Amsterdam;
 // LSN21B screen id 10, Amsterdam-Nice) across several following steps each time -- but
@@ -1690,6 +1702,312 @@ const FQD_FAKE_SCREENS = {
     "04 BLPX3MN1                 150  @  S01JAN 31MAR  - SU   3M SN R",
     ">                                                 PAGE  1/ 3   ",
   ],
+  // --- Classroom lesson 22: same gap pattern as lesson 21 above, but larger (17
+  // bare-FQD-echo gaps plus 4 FQDC "change"-command gaps -- see
+  // canonicalFqdChangeAnswer near parseFqdCommand for the latter). Every table below
+  // is modeled on one of this lesson's own six real captured fare displays: the
+  // carrier-specific style (paso5 BRUNCE/paso7 FRATYO/paso25 LONHKG -- header +
+  // "other validating carriers" line(s) + a short column header with a booking-class
+  // column, no AL column, since a single requested carrier never needs one), and the
+  // generic style (paso14 FRANYC/paso19 MIAFRA/paso23 CGNROM -- a longer column
+  // header with an AL column instead, used whenever more than one carrier can appear
+  // in the results: a class/fare-type/round-trip/one-way filter with no carrier
+  // pinned, or a query naming TWO specific carriers at once).
+  // classroom-22-2 (paso2 answer) FQDNYCFRA/22MAR/ACO, displayed at paso3. Modeled
+  // on the carrier-specific BRUNCE table (paso5, real): header + "other validating
+  // carriers" lines + short column header (B column, no AL). USD origin (New York),
+  // NUC-base currency so ROE 1.00000.
+  "classroom-22-2": [
+    "FQDNYCFRA/22MAR/ACO                                             ",
+    "AA  DL  UA                                                      ",
+    "LH  LX                                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 USD                             ",
+    "22MAR22**22MAR22/CO NYCFRA/NLX;EH/TPM  3851/MPM  4621           ",
+    "LN FARE BASIS    OW   USD  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 KLX3M                    198 K  @     -     -     - SU   3M R",
+    "02 VAP7                     245 V  @     -     -     - SU   3M R",
+    "03 YFLEX                    590 Y  @     -     -     - SU   3M R",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-3 (paso3 answer) FQDMADMUC/28AUG/ALH, displayed at paso4. Same
+  // BRUNCE-style template, EUR origin (Madrid).
+  "classroom-22-3": [
+    "FQDMADMUC/28AUG/ALH                                             ",
+    "AZ  OS  SN                                                      ",
+    "TP  UX                                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 EUR                             ",
+    "28AUG22**28AUG22/LH MADMUC/NLX;EH/TPM   903/MPM  1084           ",
+    "LN FARE BASIS    OW   EUR  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 QLX1                     105 Q  @     -     -     - SU   3M R",
+    "02 HRT6MLH                  138 H  @     -     -     - SU   3M R",
+    "03 KLX3MN                   169 K  @     -     -     - SU   3M R",
+    "04 YFLEX                    280 Y  @     -     -     - SU   3M R",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-8 (paso8 answer) FQDLHRJNB/30AUG/ABA,SA -- TWO carriers requested,
+  // so (unlike a single-carrier query) each row needs its own AL column to show
+  // which of the two it belongs to. Modeled on the generic/AL-column MIAFRA table
+  // (paso19, real). GBP origin (London-Heathrow); JNB has no co-terminal, so no
+  // ALSO SEE.
+  "classroom-22-8": [
+    "FQDLHRJNB/30AUG/ABA,SA                                          ",
+    "ROE 0.84230 ROUNDING UP TO 1.00 GBP                             ",
+    "30AUG22**30AUG22/LHRJNB/NLX;EH/TPM  5634/MPM  6761              ",
+    "LN FARE BASIS    OW   GBP  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 VLX1                     420  @  S01AUG 31DEC  -  7   3M BA M",
+    "02 HRT6MN                   485  @  S15AUG 31DEC  -  7   3M SA M",
+    "03 KLX3MN                   560  @  S01AUG 31DEC  -  7   3M BA M",
+    "04 SAVER                    640  @  S01SEP 31OCT  -  7   3M SA M",
+    ">                                                   PAGE 1/ 3",
+  ],
+  // classroom-22-9 (paso9 answer) FQDSFOAMS/16JUN/AKL,UA, another two-carrier
+  // query -- same generic/AL-column template. USD origin (San Francisco).
+  "classroom-22-9": [
+    "FQDSFOAMS/16JUN/AKL,UA                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 USD                             ",
+    "16JUN22**16JUN22/SFOAMS/NLX;EH/TPM  5436/MPM  6523              ",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 VLX1                     380  @  S01JUN 31AUG  -  7   3M KL M",
+    "02 HRT6MN                   450  @  S15JUN 31AUG  -  7   3M UA M",
+    "03 SAVER                    520  @  S01SEP 31OCT  -  7   3M KL M",
+    ">                                                   PAGE 1/ 1",
+  ],
+  // classroom-22-10 (paso10 answer) FQDLAXLON/18JAN/A-UA (single carrier, YY
+  // excluded) -- carrier-style template again (BRUNCE family). USD origin (Los
+  // Angeles); London is multi-airport, so an ALSO SEE line is added for its real
+  // co-terminal codes, fixed origin + alternate destination (same pattern as
+  // lesson 21's own LONMUC/PARMAD fixes).
+  "classroom-22-10": [
+    "FQDLAXLON/18JAN/A-UA                                            ",
+    "ALSO SEE LAXLGW LAXLHR LAXLTN                                   ",
+    "AA  BA                                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 USD                             ",
+    "18JAN22**18JAN22/UA LAXLON/NLX;EH/TPM  5456/MPM  6549           ",
+    "LN FARE BASIS    OW   USD  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 VLX1                     420 V  @     -     -     - SU   3M R",
+    "02 HRT6MN                   498 H  @     -     -     - SU   3M R",
+    "03 YFLEX                    890 Y  @     -     -     - SU   3M R",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-11 (paso11 answer) FQDMIALON/17AUG/CB (class B, no single
+  // carrier) -- generic/AL-column template (MIAFRA family). USD origin (Miami);
+  // London's three real co-terminal codes are listed via ALSO SEE.
+  "classroom-22-11": [
+    "FQDMIALON/17AUG/CB",
+    "ALSO SEE MIALGW MIALHR MIALTN                                    ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 USD                              ",
+    "17AUG22**17AUG22/MIALON/NLX;EH/TPM  4417/MPM  5308            ",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 BLSX1M                   480  @  S01AUG  31DEC  -  7  3M BA R",
+    "02 BLWX1M                   560  @  S15AUG  31DEC  -  7  3M YY R",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-12 (paso12 answer) FQDDELBRU/26MAY/CY (class Y). Generic/AL
+  // template, INR origin (Delhi, matching lesson 21's own DELAMS precedent for
+  // this same city). No ALSO SEE: both DEL and BRU are single-airport.
+  "classroom-22-12": [
+    "FQDDELBRU/26MAY/CY                                              ",
+    "ROE 83.5000 ROUNDING UP TO 1.00 INR                             ",
+    "26MAY22**26MAY22/DELBRU/NLX;EH/TPM  3012/MPM  3614              ",
+    "LN FARE BASIS    OW   INR  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                 38500  @  S01MAY 31AUG  -  7   3M LH M",
+    "02 YLWX1M                 44000  @  S15MAY 31AUG  -  7   3M AF M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-15 (paso15 answer) FQDNYCPAR/22MAY/R,-SPL (special fares).
+  // Generic/AL template, USD origin (New York); Paris's two real co-terminal codes
+  // are listed via ALSO SEE (fixed origin NYC + alternate destination), mirroring
+  // lesson 21's own "ALSO SEE CDGMAD ORYMAD" fix.
+  "classroom-22-15": [
+    "FQDNYCPAR/22MAY/R,-SPL                                          ",
+    "ALSO SEE NYCCDG NYCORY                                           ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 USD                             ",
+    "22MAY22**22MAY22/NYCPAR/SPL;EH/TPM  3635/MPM  4362              ",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 SLSX1M                   510  @  S01MAY 31AUG  -  7   3M AF M",
+    "02 SLWX1M                   590  @  S15MAY 31AUG  -  7   3M DL M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-16 (paso16 answer) FQDSTOHKG/19AUG/R,-SPL (special fares).
+  // Generic/AL template, SEK origin (Stockholm, matching lesson 21's own STONCE
+  // precedent); its own alt code ARN is listed via ALSO SEE (origin side, same
+  // single-alt convention lesson 21 used for this same city).
+  "classroom-22-16": [
+    "FQDSTOHKG/19AUG/R,-SPL                                          ",
+    "ALSO SEE ARNHKG                                                  ",
+    "ROE 10.5200 ROUNDING UP TO 1.00 SEK                             ",
+    "19AUG22**19AUG22/STOHKG/SPL;EH/TPM  5121/MPM  6146              ",
+    "LN FARE BASIS    OW   SEK  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 SLSX1M                  7850  @  S01AUG 31DEC  -  7   3M SK M",
+    "02 SLWX1M                  9120  @  S15AUG 31DEC  -  7   3M CX M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-17 (paso17 answer) FQDLAXAMS/21MAR/R,-APX (APEX fares).
+  // Generic/AL template, USD origin (Los Angeles). No ALSO SEE: both LAX and AMS
+  // are single-airport.
+  "classroom-22-17": [
+    "FQDLAXAMS/21MAR/R,-APX                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 USD                             ",
+    "21MAR22**21MAR22/LAXAMS/APX;EH/TPM  5558/MPM  6670              ",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 ALSX1M                   560  @  S01MAR 31MAY  -  7   3M KL M",
+    "02 ALWX1M                   640  @  S15MAR 31MAY  -  7   3M UA M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-20 (paso20 answer) FQDCAIMAD/31JUL/R,-EX (2-letter "excursion
+  // adult" fare code). Generic/AL template, EGP origin (Cairo). No ALSO SEE: both
+  // CAI and MAD are single-airport.
+  "classroom-22-20": [
+    "FQDCAIMAD/31JUL/R,-EX                                           ",
+    "ROE 48.2500 ROUNDING UP TO 1.00 EGP                             ",
+    "31JUL22**31JUL22/CAIMAD/NLX;EH/TPM  1803/MPM  2164              ",
+    "LN FARE BASIS    OW   EGP  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 ELSX1M                 12500  @  S01JUL 30SEP  -  7   3M MS M",
+    "02 ELWX1M                 14800  @  S15JUL 30SEP  -  7   3M IB M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-21 (paso21 answer) FQDRIOFRA/28OCT/IR (round-trip). Generic/AL
+  // template, BRL origin (Rio de Janeiro); Rio's two real co-terminal codes
+  // (GIG/SDU) are listed via ALSO SEE (origin side, fixed destination FRA), the
+  // same "origin-varies" pattern as lesson 21's own ROMMAN fix.
+  "classroom-22-21": [
+    "FQDRIOFRA/28OCT/IR                                              ",
+    "ALSO SEE GIGFRA SDUFRA                                           ",
+    "ROE 4.85000 ROUNDING UP TO 1.00 BRL                             ",
+    "28OCT22**28OCT22/RIOFRA/NLX;EH/TPM  5704/MPM  6845              ",
+    "LN FARE BASIS    OW   BRL  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 RLSX1M                  4850  @  S01OCT 31DEC  -  7   3M LH M",
+    "02 RLWX1M                  5620  @  S15OCT 31DEC  -  7   3M AF M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-23 (paso23 answer) FQDNYCFRA/24APR/ADL/IO (single carrier +
+  // one-way, combined options). Carrier-style template (matching lesson 21's own
+  // LONHKG/ACX/R,-EXC precedent for combining a carrier with another option). USD
+  // origin (New York); New York's three real co-terminal codes are listed via
+  // ALSO SEE (origin side, fixed destination FRA), same 3-code convention as
+  // lesson 21's LONMUC fix.
+  "classroom-22-23": [
+    "FQDNYCFRA/24APR/ADL/IO                                      ",
+    "ALSO SEE JFKFRA EWRFRA LGAFRA                                   ",
+    "AA  LH  UA                                                      ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 USD                             ",
+    "24APR22**24APR22/DL NYCFRA/NLX;EH/TPM  3851/MPM  4621           ",
+    "LN FARE BASIS    OW   USD  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 OLX1                     320 O  @     -     -     -  -   6M M",
+    "02 YFLEX                    590 Y  @     -     -     -  -   6M M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-28 (paso28 answer) FQDDXBROM/23JUN/ALH (single carrier, review
+  // section). Carrier-style template, AED origin (Dubai); Rome's two real
+  // co-terminal codes are listed via ALSO SEE (destination side, fixed origin
+  // DXB).
+  "classroom-22-28": [
+    "FQDDXBROM/23JUN/ALH                                             ",
+    "ALSO SEE DXBFCO DXBCIA                                          ",
+    "EK  MS                                                          ",
+    "ROE 3.67250 ROUNDING UP TO 1.00 AED                             ",
+    "23JUN22**23JUN22/LH DXBROM/NLX;EH/TPM  2473/MPM  2968           ",
+    "LN FARE BASIS    OW   AED  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 KLX3M                   1480 K  @     -     -     - SU   3M R",
+    "02 YFLEX                   3250 Y  @     -     -     - SU   3M R",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-29 (paso29 answer) FQDLONCPT/16MAY/CS (class S). Generic/AL
+  // template, GBP origin (London); London's three real co-terminal codes are
+  // listed via ALSO SEE (origin side, fixed destination CPT).
+  "classroom-22-29": [
+    "FQDLONCPT/16MAY/CS                                              ",
+    "ALSO SEE LGWCPT LHRCPT LTNCPT                                    ",
+    "ROE 0.84230 ROUNDING UP TO 1.00 GBP                             ",
+    "16MAY22**16MAY22/LONCPT/NLX;EH/TPM  5983/MPM  7180              ",
+    "LN FARE BASIS    OW   GBP  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 SLSX1M                   620  @  S01MAY 31AUG  -  7   3M BA M",
+    "02 SLWX1M                   710  @  S15MAY 31AUG  -  7   3M VS M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-30 (paso30 answer) FQDBCNSTO/28SEP/ASK (single carrier).
+  // Carrier-style template, EUR origin (Barcelona); Stockholm's own real alt code
+  // ARN is listed via ALSO SEE (destination side, fixed origin BCN).
+  "classroom-22-30": [
+    "FQDBCNSTO/28SEP/ASK                                             ",
+    "ALSO SEE BCNARN                                                 ",
+    "LH  KL                                                          ",
+    "ROE 1.00000 ROUNDING UP TO 1.00 EUR                             ",
+    "28SEP22**28SEP22/SK BCNSTO/NLX;EH/TPM  1932/MPM  2318           ",
+    "LN FARE BASIS    OW   EUR  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 KLX3M                    198 K  @     -     -     - SU   3M R",
+    "02 YFLEX                    420 Y  @     -     -     - SU   3M R",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-31 (paso31 answer) FQDSYDHKG/14MAR/IR (round-trip). Generic/AL
+  // template, AUD origin (Sydney). No ALSO SEE: both SYD and HKG are single-airport.
+  "classroom-22-31": [
+    "FQDSYDHKG/14MAR/IR                                              ",
+    "ROE 1.52000 ROUNDING UP TO 1.00 AUD                             ",
+    "14MAR22**14MAR22/SYDHKG/NLX;EH/TPM  4581/MPM  5497              ",
+    "LN FARE BASIS    OW   AUD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                   890  @  S01MAR 31MAY  -  7   3M CX M",
+    "02 YLWX1M                  1050  @  S15MAR 31MAY  -  7   3M QF M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-25/26/27 (pasos 25/26/27, the first three of four FQDC "change"
+  // gaps) are a different kind of gap from every other key in this table: the
+  // "FQDC/..." family of CHANGE commands (change airline / class / round-trip) that
+  // parseFqdCommand/canonicalFqdAnswer never recognized at all, so instead of a
+  // bare echo these three steps simply kept re-showing paso25's own real captured
+  // table UNCHANGED, with no sign the requested change ever took effect (see
+  // canonicalFqdChangeAnswer below, which is what actually routes here). Modeled
+  // on that same real table (LONHKG/25MAR/R,-EXC/ACX, carrier-style, GBP),
+  // changing only the ONE requested parameter each time and carrying the others
+  // forward, matching the lesson's own description ("fare options may be
+  // CHANGED"). This step (paso26) answers FQDC/AIB: same route/date/fare-type/
+  // currency, carrier switched to Iberia.
+  "classroom-22-25": [
+    "FQDLONHKG/25MAR/R,-EXC/AIB                                  ",
+    "ROE 0.65168 ROUNDING TO THE NEAREST 1.00 GBP                    ",
+    "25MAR22**07APR22/IB LONHKG/EXC;EH/TPM  5979/MPM  8736           ",
+    "LN FARE BASIS    OW   GBP  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 YEE6M                    990 W  @     -     -     -  -   6M M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-26 (paso27) answers FQDC/CC: builds on the previous step (Iberia
+  // carrier, excursion fares still active) and adds a class-C filter -- every row
+  // now shows class C.
+  "classroom-22-26": [
+    "FQDLONHKG/25MAR/R,-EXC/AIB/CC                               ",
+    "ROE 0.65168 ROUNDING TO THE NEAREST 1.00 GBP                    ",
+    "25MAR22**07APR22/IB LONHKG/EXC;EH/TPM  5979/MPM  8736           ",
+    "LN FARE BASIS    OW   GBP  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 CEE6M                   1480 C  @     -     -     -  -   6M M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-27 (paso28) answers FQDC/IR: builds on the previous two steps
+  // (Iberia, class C, excursion) and confirms round-trip fares.
+  "classroom-22-27": [
+    "FQDLONHKG/25MAR/R,-EXC/AIB/CC/IR                            ",
+    "ROE 0.65168 ROUNDING TO THE NEAREST 1.00 GBP                    ",
+    "25MAR22**07APR22/IB LONHKG/EXC;EH/TPM  5979/MPM  8736           ",
+    "LN FARE BASIS    OW   GBP  RT   B PEN  DATES/DAYS   AP MIN MAX R",
+    "01 CEE6M                   1480 C  @     -     -     -  -   6M M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
+  // classroom-22-32 (paso33's answer display, the 4th FQDC gap, discovered only by
+  // checking EVERY screen in the lesson, not just the ones noticed at first) --
+  // paso32 asks for FQDC/AAA ("change the current fare display to show fares of
+  // American Airlines and YY fares"); paso33 (the lesson's closing screen) is where
+  // that response would show, but FQDC/AAA left it blank like the others. "The
+  // current fare display" at that point is paso31's SYDHKG/14MAR/IR table
+  // (classroom-22-31 above); modeled on that same table, changing only the airline
+  // filter to AA + YY.
+  "classroom-22-32": [
+    "FQDSYDHKG/14MAR/IR/AAA                                          ",
+    "ROE 1.52000 ROUNDING UP TO 1.00 AUD                             ",
+    "14MAR22**14MAR22/SYDHKG/NLX;EH/TPM  4581/MPM  5497              ",
+    "LN FARE BASIS    OW   AUD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01 YLSX1M                   890  @  S01MAR 31MAY  -  7   3M AA M",
+    "02 YLWX1M                  1050  @  S01MAR 31MAY  -  7   3M YY M",
+    ">                                                 PAGE  1/ 1    ",
+  ],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
@@ -1831,6 +2149,7 @@ function terminalForCurrentScreenRaw() {
       const rmAnswer = canonicalRmAnswer(previous.answers);
       const osAnswer = canonicalOsAnswer(previous.answers);
       const fqdAnswer = canonicalFqdAnswer(previous.answers);
+      const fqdChangeAnswer = canonicalFqdChangeAnswer(previous.answers);
       if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
@@ -1854,6 +2173,16 @@ function terminalForCurrentScreenRaw() {
       } else if (fqdAnswer) {
         const fakeScreen = FQD_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
         fqdLines = fakeScreen || [buildFqdHeaderLine(fqdAnswer)];
+      } else if (fqdChangeAnswer) {
+        // Unlike a plain FQD query, a "change" command can't be derived from its own
+        // text (there is no generic rule for "what the table looks like after
+        // changing the airline") -- so this only has an effect where a fake table has
+        // actually been authored for it (classroom-22-25/26/27/32 so far). Where none
+        // exists, fqdLines is simply left unset, same as before this branch existed:
+        // the previous plainTerminal (the last real or synthesized display) keeps
+        // showing, exactly as it did everywhere this command appears unhandled.
+        const fakeScreen = FQD_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
+        if (fakeScreen) fqdLines = fakeScreen;
       }
     }
     // Some lessons (e.g. LSN11) bundle a type-9 CLEAR/CLS/IGNORED marker into the SAME screen
