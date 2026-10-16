@@ -1024,6 +1024,13 @@ const TEXT_FIXES = {
   'classroom-30-B-16': [
     ['List all Roma airports', 'List all Rome airports'],
   ],
+  // Classroom lesson 22, screen id 11 (paso 12): the original text wraps "...in Y class
+  // from" / "from Delhi to Brussels..." across two lines, duplicating "from" right at the
+  // line break -- "in Y class from from Delhi". Dropping the first (line-ending) copy
+  // leaves the single intended "from Delhi to Brussels on 26 May?".
+  'classroom-22--11': [
+    ['in Y class from', 'in Y class'],
+  ],
   // Agency lesson 13, screen id 14 ("Store this information as a general remark.") is the
   // one remark exercise in this curriculum with no taught abbreviation to reuse and no
   // worked example of its own (see the matching ANSWER_FIXES entry) -- adding one here, in
