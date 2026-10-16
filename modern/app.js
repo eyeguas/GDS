@@ -607,7 +607,7 @@ function boldKeywords(escapedText) {
   const codes = codeLookupMap();
   return escapedText.replace(KEYWORD_RE, match => {
     const learned = glossary && glossary.get(match);
-    if (learned) return `<strong class="kw kw-term" title="${escapeHtml(learned)}"><span class="kw-icon" aria-hidden="true">◆</span>${match}</strong>`;
+    if (learned) return `<strong class="kw kw-term" title="${escapeHtml(learned)}">${match}</strong>`;
     const place = codes && codes.get(match);
     if (place) return `<strong class="kw kw-place" title="${escapeHtml(place)}"><span class="kw-icon" aria-hidden="true">⌗</span>${match}</strong>`;
     return `<strong class="kw">${match}</strong>`;
