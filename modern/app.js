@@ -2166,6 +2166,95 @@ const FQN_FAKE_SCREENS = {
     "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
     "             ******  SELECT PARAGRAPHS  ******  ",
   ],
+  // Paso 27 (idx26) answers FQN10*MN -- the North American "RULES DISPLAY" format
+  // (2-letter codes, no numbered paragraphs) for the NEW line-10 fare basis (XLE21FN) that
+  // SCREEN_OVERRIDES['classroom-23-25'] below adds to the MIACLE table, reusing paso22's
+  // real MN.MIN STAY body text letter-for-letter (generic rule wording already established
+  // for this same fare family), with only the FARE BASIS row, FCL code and rule number
+  // changed to the new fare.
+  'classroom-23-26': [
+    "**  RULES DISPLAY  **                                           ",
+    "12AUG22**26AUG22/MIACLE/NLX                                     ",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "10 XLE21FN               275.00 NRF    -        @  @SU   30 DL R",
+    "FCL: XLE21FN   TRF:  11 RULE: 4091 BK:  V/VN                    ",
+    "PTC: ADT-ADULT.             FTC: XPN-INSTANT PURCHASE NONREF    ",
+    " FARE DATES                                                     ",
+    "    EFF: 29APR17       DIS:                                     ",
+    "MN.MIN STAY                                                     ",
+    "  RETURN TRAVEL FROM STOPOVER FARTHEST GEOGRAPHICALLY FROM      ",
+    "  FARE ORIGIN MUST COMMENCE NO EARLIER THAN THE FIRST SUN       ",
+    "  AFTER DEPARTURE FROM FARE ORIGIN.                             ",
+    ">                                                   PAGE 1/ 8",
+  ],
+  // Paso 28 (idx27) answers FQN4*SR,MX -- "line 4" here is the MIACLE table's own row 4
+  // (QLE21QN), so this is grounded in the same extended table, not the earlier 047P fare.
+  // MX.MAX STAY reused letter-for-letter from paso24's real capture; SR.SALES RESTRICTIONS
+  // has no real anchor anywhere in the lesson, so its one line is newly written. Three
+  // screens are stacked here, in the order the user asked for: the synthesized SR/MX
+  // response itself, then the MIACLE fare table again (so "line 4" and "line 10" both stay
+  // visible), then the "SELECT PARAGRAPHS" menu (reused verbatim from classroom-23-16/
+  // paso12) -- needed because paso28's OWN question ("...paragraphs 3, 7, and 8 for the
+  // fare in line 5?") goes back to the numbered-paragraph syntax that menu is the reference
+  // for, same as every other abstract "line N" paragraph question earlier in this lesson.
+  'classroom-23-27': [
+    "**  RULES DISPLAY  **                                           ",
+    "12AUG22**26AUG22/MIACLE/NLX                                     ",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "04 QLE21QN               258.00 NRF    -        @  @SU   30 NW R",
+    "FCL: QLE21QN   TRF:  11 RULE: 4078 BK:  V/VN                    ",
+    "PTC: ADT-ADULT.             FTC: XPN-INSTANT PURCHASE NONREF    ",
+    " FARE DATES                                                     ",
+    "    EFF: 29APR17       DIS:                                     ",
+    "SR.SALES RESTRICTIONS                                           ",
+    "  TICKETS MUST BE PURCHASED IN THE COUNTRY OF ORIGIN.           ",
+    "MX.MAX STAY                                                     ",
+    "  RETURN TRAVEL FROM LAST STOPOVER MUST COMMENCE NO LATER       ",
+    "  THAN 30 DAYS AFTER DEPARTURE FROM FARE ORIGIN.                ",
+    ">                                                   PAGE 1/ 8",
+    "FQDMIACLE/D12JAN",
+    "12JAN22*26JAN22/MIACLE/NLX",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01*VPDE7BMN              199.00  -     -      -   -  -   -  US R",
+    "02 MOE21FN               258.00 NRF    -        @  @  @  -  AA R",
+    "03 VLE21IP               258.00 NRF    -        @  @SU@  30 CO R",
+    "04 QLE21QN               258.00 NRF    -        @  @SU   30 NW R",
+    "05 TE21OFN               258.00 NRF    -        @  @SU@  30 TW R",
+    "06 TE21OFLN              258.00 NRF    -        @  @SU@  30 TW R",
+    "07 VE21ONFQ              258.00 NRF    -        @  @SU   -  UA R",
+    "08 KODE21QN              258.00 NRF    -        @  @SU@  30 US R",
+    "09 KLFE21N               268.00 NRF    -        @  @SU   30 DL R",
+    "10 XLE21FN               275.00 NRF    -        @  @SU   30 DL R",
+    "FQN 04  /17MAY22 *INDEF  /                *047P",
+    "01.APPLICATION                  02.ELIGIBILITY",
+    "03.FARES                        04.CHILDREN/INFANTS FARES",
+    "06.PERIODS OF APPLICATION       11.STOPOVERS   ",
+    "12.ROUTING                      13.TRANSFERS   ",
+    "14.CONSTRUCTIONS/COMBINATIONS   15.ADVERTISING AND SALES",
+    "16.RESERVATIONS                 17.PAYMENT    ",
+    "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
+    "             ******  SELECT PARAGRAPHS  ******  ",
+  ],
+  // Paso 29 (idx28, the lesson's closing screen) answers paso28's FQN5*3,7,8. Back to the
+  // 047P/LE KIOSQUE fare's own numbered paragraphs (the same abstract "line 5" questions
+  // earlier in this lesson -- paso17/18 -- also used this fare as their reference). 03.FARES
+  // is reused letter-for-letter from the classroom-23-B-0 fix (paso19) for this same fare;
+  // 07.MINIMUM STAY/"SUNDAY RULE" is reused letter-for-letter from the ORIGINAL real .DAT
+  // capture at that same screen (genuine captured text, just not the paragraph that
+  // screen's own question actually asked for, so still a legitimate anchor to reuse here);
+  // 08 has no real or prior-authored anchor anywhere in the lesson, so it is the one
+  // genuinely new paragraph.
+  'classroom-23-28': [
+    "                /17MAY22*INDEF  /                 *047P*    ",
+    "    LE KIOSQUE AIR FRANCE                                   ",
+    "                                                            ",
+    "03.FARES                                                    ",
+    "   ECONOMY CLASS FARES ONLY.                                ",
+    "07.MINIMUM STAY                                             ",
+    "   SUNDAY RULE                                              ",
+    "08.TICKET VALIDITY                                          ",
+    "   TICKET IS VALID FOR ONE YEAR FROM THE DATE OF ISSUE.     ",
+  ],
 };
 // Paso 17 (idx16) is the response to paso16's own "PD" -- which canonicalFqnAnswer never
 // matches ("PD" is not an FQN command), so the fqnAnswer branch above never even looks at a
@@ -2179,8 +2268,14 @@ const FQN_FAKE_SCREENS = {
 // Cleveland) and nothing about the previous paragraph-selection screen belongs there
 // anymore, so this one is the empty array: it forces a genuinely blank screen rather than
 // leaving paso19's (fixed) content lingering.
+// Paso 26 (idx25) is the response to paso25's own "PD" too. Paso26's own question ("...for
+// the fare basis in LINE 10?") only makes sense if a line 10 actually exists on screen, so
+// this swaps in the real MIACLE fare table from paso21 (LSN23/screen id2) with one extra
+// row appended -- "10 XLE21FN", built the same character-exact way as every
+// FQD_FAKE_SCREENS/FQN_FAKE_SCREENS table (same column widths, same ascending price order
+// as the real row above it) -- so there is something concrete to point "line 10" at.
 // Neither case is keyed off recognizing a particular command family (there is no command to
-// recognize in "PD"), so both are kept as their own small, explicit, position-keyed
+// recognize in "PD"), so all three are kept as their own small, explicit, position-keyed
 // overrides instead -- checked unconditionally, ahead of every other synthesis in the loop
 // below, and always a flat swap rather than an addition: `plainTerminal` is forced to null
 // wherever an override applies (even an empty one), so the override alone decides what
@@ -2198,6 +2293,21 @@ const SCREEN_OVERRIDES = {
     "             ******  SELECT PARAGRAPHS  ******  ",
   ],
   'classroom-23-19': [],
+  'classroom-23-25': [
+    "FQDMIACLE/D12JAN",
+    "12JAN22*26JAN22/MIACLE/NLX",
+    "LN FARE BASIS    OW   USD  RT   PEN  DATES  DAYS AP MIN MAX AL R",
+    "01*VPDE7BMN              199.00  -     -      -   -  -   -  US R",
+    "02 MOE21FN               258.00 NRF    -        @  @  @  -  AA R",
+    "03 VLE21IP               258.00 NRF    -        @  @SU@  30 CO R",
+    "04 QLE21QN               258.00 NRF    -        @  @SU   30 NW R",
+    "05 TE21OFN               258.00 NRF    -        @  @SU@  30 TW R",
+    "06 TE21OFLN              258.00 NRF    -        @  @SU@  30 TW R",
+    "07 VE21ONFQ              258.00 NRF    -        @  @SU   -  UA R",
+    "08 KODE21QN              258.00 NRF    -        @  @SU@  30 US R",
+    "09 KLFE21N               268.00 NRF    -        @  @SU   30 DL R",
+    "10 XLE21FN               275.00 NRF    -        @  @SU   30 DL R",
+  ],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
