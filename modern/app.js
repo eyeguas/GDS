@@ -2016,6 +2016,58 @@ const FQD_FAKE_SCREENS = {
     ">                                                 PAGE  1/ 1    ",
   ],
 };
+// "FQN^" ("fare notes") is a wholly different command family from FQD -- it looks up the
+// restrictions text for one line of a fare display rather than the display itself -- and,
+// unlike FQD, nothing in this file recognized it at all before classroom lesson 23 (the
+// first lesson to teach it): no echo, not even a bare one. Kept deliberately simple rather
+// than mirroring parseFqdCommand's full shorthand grammar, since every FQN variant this
+// curriculum actually teaches (plain line number, line*paragraph-or-code, line//same) only
+// ever needs to be told apart from every OTHER command type here, never parsed field by
+// field -- there is no per-field substitution to drive, just a fake-screen lookup exactly
+// like FQD_FAKE_SCREENS.
+function canonicalFqnAnswer(answers) {
+  for (const answer of answers) {
+    if (/^FQN\d/.test(answer.trim().toUpperCase())) return answer;
+  }
+  return null;
+}
+// Classroom lesson 23 (fare notes) asks the student to type FQN8 (paso2) and FQN3 (paso3)
+// as pure syntax drills, before the lesson has shown any fare display at all to attach a
+// real line 8 or line 3 to -- so, unlike every FQD gap above, there is no "nearest real
+// anchor for THIS city pair" to substitute into; any plausible fare-notes screen fills the
+// drill. Built from two of the lesson's own later real captures (LSN23 screen id5 / paso6's
+// ragged-right "PEX FARES EUROPE" note, and LSN23 screen id7 / paso8's 60-char-padded
+// "BETWEEN AREA 2 AND AREA 3" note -- the latter per the user's own suggestion to use
+// paso6 as a reference) so each fake screen is still letter-for-letter faithful to a real
+// note's layout, just carrying different (fictional) line numbers, fare-family names, area
+// pairs, percentages and rules so the two don't read as the same screen twice.
+const FQN_FAKE_SCREENS = {
+  'classroom-23-2': [
+    "FQN 08  /12SEP17*12SEP17 /",
+    "   APEX FARES NORTH AMERICA",
+    "01. APPLICATION",
+    "    BETWEEN AREA 1 AND AREA 2.",
+    "    OW/RT ONLY.",
+    "03. FARES",
+    "    FARES APPLY ONLY IF RESERVATIONS ARE MADE AND TICKETED",
+    "    AT LEAST 14 DAYS BEFORE DEPARTURE.",
+  ],
+  'classroom-23-3': [
+    "                /15SEP22*INDEF  /                 *22B3*    ",
+    "   ECONOMY FARES                                    2203 IB ",
+    "   BETWEEN AREA 1 AND AREA 2                        IPRAP   ",
+    "01.APPLICATION                                              ",
+    "   BETWEEN AREA 1                                           ",
+    "   AND     AREA 2                                           ",
+    "   ECONOMY ... OW/RT/CT/OJ                                  ",
+    "04.CHILDRENS/INFANTS FARES                                  ",
+    "   CHD ... 25 PCT                                           ",
+    "   INF ... 10 PCT                                           ",
+    "11.STOPOVERS                                                ",
+    "   ONE STOPOVER PERMITTED IN EACH DIRECTION.                ",
+    ">                                                 PAGE  1/ 1 ",
+  ],
+};
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
 // echo it again, apparently for its own internal highlighting, not as a second visible
@@ -2129,10 +2181,15 @@ function terminalForCurrentScreenRaw() {
   // below) and only ever reflects the step immediately before the one being viewed. Usually
   // just the single echoed header line (buildFqdHeaderLine); FQD_FAKE_SCREENS above overrides
   // a couple of specific steps with a full illustrative fare table instead.
+  let fqnLines = null; // synthesized FQN fare-notes echo -- same one-off, recomputed-every-
+  // iteration treatment as fqdLines, but with no generic bare-echo fallback: FQN has no
+  // per-field grammar to echo back (see canonicalFqnAnswer), so a step only gets anything
+  // here when FQN_FAKE_SCREENS has an entry actually authored for it.
   for (let index = 0; index <= session.index; index += 1) {
     const screen = session.screens[index];
     const previous = index > 0 ? session.screens[index - 1] : null;
     fqdLines = null;
+    fqnLines = null;
     // CLS is executed after the contents of its screen have been read, and so is a
     // one-off confirmation message once the step that produced it is behind us. Some
     // lessons (e.g. LSN11) mark the same "transaction is over" moment with a bare type-9
@@ -2157,6 +2214,7 @@ function terminalForCurrentScreenRaw() {
       const osAnswer = canonicalOsAnswer(previous.answers);
       const fqdAnswer = canonicalFqdAnswer(previous.answers);
       const fqdChangeAnswer = canonicalFqdChangeAnswer(previous.answers);
+      const fqnAnswer = canonicalFqnAnswer(previous.answers);
       if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
@@ -2190,6 +2248,16 @@ function terminalForCurrentScreenRaw() {
         // showing, exactly as it did everywhere this command appears unhandled.
         const fakeScreen = FQD_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
         if (fakeScreen) fqdLines = fakeScreen;
+      } else if (fqnAnswer) {
+        // No generic rule exists for "what a fare notes screen looks like" (unlike FQD's
+        // buildFqdHeaderLine) -- so, same as fqdChangeAnswer above, this only has an effect
+        // where FQN_FAKE_SCREENS actually has an entry for this exact step. Where none
+        // exists, fqnLines is simply left unset: a purely blank step (no plainTerminal, no
+        // other synthesized element) stays blank exactly as it did before this branch
+        // existed, and a step that was already showing something else (a header, a segment,
+        // a prior fqdLines/fqnLines...) keeps showing it, untouched.
+        const fakeScreen = FQN_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
+        if (fakeScreen) fqnLines = fakeScreen;
       }
     }
     // Some lessons (e.g. LSN11) bundle a type-9 CLEAR/CLS/IGNORED marker into the SAME screen
@@ -2267,7 +2335,7 @@ function terminalForCurrentScreenRaw() {
         plainTerminal = screen.output;
         header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine || (fqdLines && fqdLines.length)) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine || (fqdLines && fqdLines.length) || (fqnLines && fqnLines.length)) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, a previously captured header/segment, or a fare-display
       // echo) is already under way -- that takes over, matching the original behavior for
@@ -2304,7 +2372,7 @@ function terminalForCurrentScreenRaw() {
   const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines]
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
-  const fqdPart = fqdLines || [];
+  const fqdPart = fqdLines || fqnLines || [];
   return [...fqdPart, ...rfPart, ...noticePart, ...nameLines, ...trailingItems];
 }
 function terminalForCurrentScreen() {
