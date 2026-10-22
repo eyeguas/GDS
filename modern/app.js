@@ -2113,6 +2113,60 @@ const FQN_FAKE_SCREENS = {
     "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
     "             ******  SELECT PARAGRAPHS  ******  ",
   ],
+  // Paso 18 (idx17) answers FQN5*4,15,19 (paragraphs 4, 15 and 19) -- another two-blocks-
+  // stacked screen, same reasoning as classroom-23-13/-14. Paragraph 4 (CHILDRENS/INFANTS
+  // FARES) and its body text are reused letter-for-letter from the REAL capture at
+  // LSN23B/paso19 (id0) of this very same 047P fare; paragraph 19 (REFUND FOR CANCEL./NO
+  // SHOW) is reused letter-for-letter from classroom-23-13 above (same fare, same
+  // paragraph); paragraph 15 (ADVERTISING AND SALES) has no real or prior-authored anchor
+  // anywhere in this lesson, so its one line of body text is the only genuinely new wording
+  // here. The menu is appended underneath, same as -13/-14.
+  'classroom-23-17': [
+    "                /17MAY22*INDEF  /                 *047P*    ",
+    "    LE KIOSQUE AIR FRANCE                                   ",
+    "                                                            ",
+    "04.CHILDRENS/INFANTS FARES                                  ",
+    "   CHILDREN PAY 75 PCT OF APPLICABLE ADULT FARE             ",
+    "   INFANTS PAY 10 PCT OF APPLICABLE ADULT FARE              ",
+    "15.ADVERTISING AND SALES                                    ",
+    "   TICKETS MAY BE SOLD AND ADVERTISED AT ANY IATA LOCATION. ",
+    "19.REFUND FOR CANCEL./NO SHOW                               ",
+    "   NO REFUND IS PERMITTED ONCE TRAVEL HAS COMMENCED.        ",
+    "   NO SHOW - A CHARGE OF 100 PCT OF THE FARE WILL APPLY.    ",
+    "FQN 04  /17MAY22 *INDEF  /                *047P",
+    "01.APPLICATION                  02.ELIGIBILITY",
+    "03.FARES                        04.CHILDREN/INFANTS FARES",
+    "06.PERIODS OF APPLICATION       11.STOPOVERS   ",
+    "12.ROUTING                      13.TRANSFERS   ",
+    "14.CONSTRUCTIONS/COMBINATIONS   15.ADVERTISING AND SALES",
+    "16.RESERVATIONS                 17.PAYMENT    ",
+    "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
+    "             ******  SELECT PARAGRAPHS  ******  ",
+  ],
+};
+// Paso 17 (idx16) is the response to paso16's own "PD" -- which canonicalFqnAnswer never
+// matches ("PD" is not an FQN command), so the fqnAnswer branch above never even looks at a
+// FQN_FAKE_SCREENS entry here. The lesson is about to ask the student to select ANOTHER
+// paragraph (paso17's own question, about comma/range lists), so the screen needs to return
+// to the "SELECT PARAGRAPHS" menu -- not keep showing paragraph 6's now-stale content -- for
+// the student to pick from again, same as it did right before paso13/14 asked for a single
+// paragraph. Unlike FQN_FAKE_SCREENS/FQD_FAKE_SCREENS, this isn't keyed off recognizing a
+// particular command family at all (there is no command here to recognize), so it is kept
+// as its own small, explicit, position-keyed override instead -- checked unconditionally,
+// ahead of every other synthesis in the loop below, and (being a flat swap the user asked
+// for here, not a stack) replaces the screen outright rather than appending to anything.
+const SCREEN_OVERRIDES = {
+  'classroom-23-16': [
+    "FQN 04  /17MAY22 *INDEF  /                *047P",
+    "01.APPLICATION                  02.ELIGIBILITY",
+    "03.FARES                        04.CHILDREN/INFANTS FARES",
+    "06.PERIODS OF APPLICATION       11.STOPOVERS   ",
+    "12.ROUTING                      13.TRANSFERS   ",
+    "14.CONSTRUCTIONS/COMBINATIONS   15.ADVERTISING AND SALES",
+    "16.RESERVATIONS                 17.PAYMENT    ",
+    "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
+    "             ******  SELECT PARAGRAPHS  ******  ",
+  ],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
@@ -2261,7 +2315,10 @@ function terminalForCurrentScreenRaw() {
       const fqdAnswer = canonicalFqdAnswer(previous.answers);
       const fqdChangeAnswer = canonicalFqdChangeAnswer(previous.answers);
       const fqnAnswer = canonicalFqnAnswer(previous.answers);
-      if (nmAnswer) {
+      const screenOverride = SCREEN_OVERRIDES[`${session.mode}-${session.number}-${index}`];
+      if (screenOverride) {
+        fqnLines = screenOverride;
+      } else if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
       } else if (apAnswer) {
