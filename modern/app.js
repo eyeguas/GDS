@@ -2067,6 +2067,52 @@ const FQN_FAKE_SCREENS = {
     "   ONE STOPOVER PERMITTED IN EACH DIRECTION.                ",
     ">                                                 PAGE  1/ 1 ",
   ],
+  // Pasos 13/14 (displayed at pasos 14/15) both answer a "display paragraph N" command
+  // (FQN4*19, then FQN2*13) against the SAME long fare whose "SELECT PARAGRAPHS" menu was
+  // captured for real at paso12 (LSN23 screen id11) -- and that menu is still the thing the
+  // VERY NEXT question (paso15's own text, "...display the periods of application") needs
+  // on screen to look up which paragraph number that is (06, per the menu). So unlike every
+  // other FQN_FAKE_SCREENS entry, these two are deliberately two screens stacked into one:
+  // first the paragraph content just requested (synthesized, following paso16/LSN23 screen
+  // id15's real "LE KIOSQUE AIR FRANCE"/047P paragraph-6 capture letter for letter, just
+  // substituting the paragraph number, title and body for 19 and 13), THEN the paso12 menu
+  // again verbatim underneath -- so the menu never actually disappears from view across this
+  // whole paragraph-selection arc, exactly as the original captures never show it being
+  // cleared either.
+  'classroom-23-13': [
+    "                /17MAY22*INDEF  /                 *047P*    ",
+    "    LE KIOSQUE AIR FRANCE                                   ",
+    "                                                            ",
+    "19.REFUND FOR CANCEL./NO SHOW                               ",
+    "   NO REFUND IS PERMITTED ONCE TRAVEL HAS COMMENCED.        ",
+    "   NO SHOW - A CHARGE OF 100 PCT OF THE FARE WILL APPLY.    ",
+    "FQN 04  /17MAY22 *INDEF  /                *047P",
+    "01.APPLICATION                  02.ELIGIBILITY",
+    "03.FARES                        04.CHILDREN/INFANTS FARES",
+    "06.PERIODS OF APPLICATION       11.STOPOVERS   ",
+    "12.ROUTING                      13.TRANSFERS   ",
+    "14.CONSTRUCTIONS/COMBINATIONS   15.ADVERTISING AND SALES",
+    "16.RESERVATIONS                 17.PAYMENT    ",
+    "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
+    "             ******  SELECT PARAGRAPHS  ******  ",
+  ],
+  'classroom-23-14': [
+    "                /17MAY22*INDEF  /                 *047P*    ",
+    "    LE KIOSQUE AIR FRANCE                                   ",
+    "                                                            ",
+    "13.TRANSFERS                                                ",
+    "   ONE TRANSFER IS PERMITTED AT ANY STOPOVER POINT WITHOUT  ",
+    "   ADDITIONAL CHARGE.                                       ",
+    "FQN 04  /17MAY22 *INDEF  /                *047P",
+    "01.APPLICATION                  02.ELIGIBILITY",
+    "03.FARES                        04.CHILDREN/INFANTS FARES",
+    "06.PERIODS OF APPLICATION       11.STOPOVERS   ",
+    "12.ROUTING                      13.TRANSFERS   ",
+    "14.CONSTRUCTIONS/COMBINATIONS   15.ADVERTISING AND SALES",
+    "16.RESERVATIONS                 17.PAYMENT    ",
+    "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
+    "             ******  SELECT PARAGRAPHS  ******  ",
+  ],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
