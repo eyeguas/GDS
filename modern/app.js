@@ -763,6 +763,29 @@ const SCREEN_OUTPUT_FIXES = {
     '  3 AP PAR 01 42 96 33 20-B',
     '  4 TK TL05MAR/PARAF2330',
   ],
+  // Classroom lesson 23, screen id0 of LSN23B (paso 19): the previous screen (paso 18) has
+  // the student type FQN4//1,3,6 ("display paragraphs 1, 3, and 6 for the fare in line 4"),
+  // but the captured response actually shows paragraphs 1, 4 and 7 instead -- a mismatch
+  // already present in the original source material between the question and its answer
+  // screen. Paragraph 01 (APPLICATION) is left exactly as captured, since it's the one
+  // paragraph that was actually asked for; paragraphs 03 (FARES) and 06 (PERIODS OF
+  // APPLICATION) replace the mismatched 04/07 blocks -- 06's wording condensed from the
+  // real, fuller capture of this same paragraph for this same 047P fare at paso16/classroom-
+  // 23-16 above, 03's one line being the only genuinely new wording (no real anchor for it
+  // exists anywhere in this lesson).
+  'classroom-23-B-0': [
+    "                /17MAY22*INDEF  /                 *047P*    ",
+    "    LE KIOSQUE AIR FRANCE                                   ",
+    "                                                            ",
+    "01.APPLICATION                                              ",
+    "   ECONOMY CLASS ROUND TRIP OR SINGLE OPEN JAW IN THE SAME  ",
+    "   COUNTRY FROM FRANCE TO EUROPE                            ",
+    "03.FARES                                                    ",
+    "   ECONOMY CLASS FARES ONLY.                                ",
+    "06.PERIODS OF APPLICATION                                    ",
+    "   OUTBOUND TRAVEL MUST BE COMMENCED DURING THE PERIOD OF    ",
+    "   APPLICATION.                                              ",
+  ],
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -2150,11 +2173,18 @@ const FQN_FAKE_SCREENS = {
 // paragraph (paso17's own question, about comma/range lists), so the screen needs to return
 // to the "SELECT PARAGRAPHS" menu -- not keep showing paragraph 6's now-stale content -- for
 // the student to pick from again, same as it did right before paso13/14 asked for a single
-// paragraph. Unlike FQN_FAKE_SCREENS/FQD_FAKE_SCREENS, this isn't keyed off recognizing a
-// particular command family at all (there is no command here to recognize), so it is kept
-// as its own small, explicit, position-keyed override instead -- checked unconditionally,
-// ahead of every other synthesis in the loop below, and (being a flat swap the user asked
-// for here, not a stack) replaces the screen outright rather than appending to anything.
+// paragraph.
+// Paso 20 (idx19) is the response to paso19's own "PD" too -- but there the fare-notes
+// topic is already over (paso20's own question moves on to a brand new FQD command, Miami-
+// Cleveland) and nothing about the previous paragraph-selection screen belongs there
+// anymore, so this one is the empty array: it forces a genuinely blank screen rather than
+// leaving paso19's (fixed) content lingering.
+// Neither case is keyed off recognizing a particular command family (there is no command to
+// recognize in "PD"), so both are kept as their own small, explicit, position-keyed
+// overrides instead -- checked unconditionally, ahead of every other synthesis in the loop
+// below, and always a flat swap rather than an addition: `plainTerminal` is forced to null
+// wherever an override applies (even an empty one), so the override alone decides what
+// shows, with nothing left over from a previous iteration.
 const SCREEN_OVERRIDES = {
   'classroom-23-16': [
     "FQN 04  /17MAY22 *INDEF  /                *047P",
@@ -2167,6 +2197,7 @@ const SCREEN_OVERRIDES = {
     "18.TICKETING                    19.REFUND FOR CANCEL./NO SHOW",
     "             ******  SELECT PARAGRAPHS  ******  ",
   ],
+  'classroom-23-19': [],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
@@ -2318,6 +2349,9 @@ function terminalForCurrentScreenRaw() {
       const screenOverride = SCREEN_OVERRIDES[`${session.mode}-${session.number}-${index}`];
       if (screenOverride) {
         fqnLines = screenOverride;
+        plainTerminal = null; // the override is an unconditional swap -- even an empty one
+        // (a forced-blank step) must not leave a previous iteration's real/carried-over
+        // screen showing underneath it.
       } else if (nmAnswer) {
         const newLines = buildNmPnrDisplay(nmAnswer, itemCount);
         if (newLines.length) { nameLines = nameLines.concat(newLines); itemCount += newLines.length; }
