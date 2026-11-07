@@ -1275,6 +1275,41 @@ const SCREEN_INSERTS = {
       "  7 TK TL18JUN/PARAF2970",
     ],
   },
+  // After the FXP/P4 syntax drill (price just passenger 4), which the original .DAT
+  // leaves unanswered because no PNR has been retrieved yet at that point either -- same
+  // situation as the FXP/S segment drills fixed above. Modeled on the REAL price-for-one-
+  // passenger-of-several capture shown later in this lesson (pricing just Mr. Engelsh out
+  // of a 2-passenger PNR): a brand new fictional 4-passenger family PNR (the TORRES family,
+  // Lisbon-Porto round trip), priced for just passenger 4 (Sofia), following that same
+  // redisplay convention of dropping only the very first passenger's leading item number.
+  // clear:true because the very next real screen (retrieve PNR Engelsh) has its own empty
+  // output and would otherwise carry this fictional screen over indefinitely.
+  'classroom-25--11': {
+    text: ['A price is displayed for the selected passenger.'],
+    answers: ['PD'],
+    clear: true,
+    output: [
+      " 01 C             210 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  LIS",
+      "  OPO TP 1872 C C 12OCT 0820 OK C                         30",
+      "  LIS TP 1879 C C 19OCT 1940 OK C                         30",
+      " ",
+      " EUR     190          LIS TP OPO 95.00 TP LIS 95.00",
+      "                       NUC190.00END ROE 0.7249 SITI",
+      " EUR       20EU",
+      " ",
+      " EUR     210",
+      "RP/LISTAP277/LISTAP277         2284TP   02OCT /0615Z   D8RNQ2",
+      "TORRES/LUIS MR   2.TORRES/ANA MRS   3.TORRES/PABLO MR   4.TORRES/SOFIA MISS",
+      "  5  TP1872 C 12OCT 2 LISOPO HK2             0820  0935",
+      "  6  TP1879 C 19OCT 6 OPOLIS HK2             1940  2055 ",
+      "  7 AP LIS 01 2373625-H",
+      "  8 TK TL28SEP/LISTAP277",
+    ],
+  },
 };
 function applyScreenInserts(mode, number, part, screens) {
   const result = [];
