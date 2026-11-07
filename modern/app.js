@@ -2308,6 +2308,37 @@ const SCREEN_OVERRIDES = {
     "09 KLFE21N               268.00 NRF    -        @  @SU   30 DL R",
     "10 XLE21FN               275.00 NRF    -        @  @SU   30 DL R",
   ],
+  // Lesson 25 (pricing with the S^ segment-selection option) asks the student to answer
+  // FXP/S6 as a pure syntax drill (paso2) before any PNR has actually been retrieved -- so,
+  // like the lesson-23 FQN syntax drills, the original .DAT shows nothing in response at
+  // all. Built from the lesson's own real paso5 capture (the FXP/S2 segment-price result
+  // for A4PN3F/MUCLH2992) as a template -- same pricing-block-then-RP-redisplay layout,
+  // same per-field widths -- but for a brand new fictional 5-segment PNR, so that "element
+  // line 6" (what paso2 actually asks to price) is itself a genuine flight segment rather
+  // than a line borrowed from a 2-segment itinerary where line 6 wouldn't exist.
+  'classroom-25-2': [
+    " 01 C             203 *                       *      * YES *",
+    " ",
+    "------------------------------------------------------------ ",
+    "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+    "  CAI                                    ",
+    "  BCN MS 0785 C C 24SEP 0140 OK C                         30",
+    " ",
+    " EUR     195          CAI MS BCN187.50 NUC187.50END",
+    "                       ROE1.0953SITI",
+    " EUR       08EU",
+    " ",
+    " EUR     203",
+    "RP/BCNIB1498/BCNIB1498         7733AZ   05SEP /0730Z   F3TKQ8",
+    "WARREN/ANNA MS ",
+    "  2   IB3182 C 14SEP 1 BCNFCO HK1         I  0855  1050",
+    "  3   AZ0612 C 14SEP 1 FCOATH HK1         2  1320  1640",
+    "  4   OA0141 C 18SEP 5 ATHIST HK1         I  0920  1045",
+    "  5   TK1757 C 21SEP 1 ISTCAI HK1         2  1830  2155",
+    "  6   MS0785 C 24SEP 4 CAIBCN HK1         I  0140  0515",
+    "  7 AP BCN 089 543672-B",
+    "  8 TK TL05SEP/BCNIB1498",
+  ],
 };
 // A line already carrying its own PNR item number can appear a second time later in the
 // SAME captured screen with the number stripped off (the legacy engine's types 6/8/61/78/88
