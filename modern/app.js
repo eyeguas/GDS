@@ -1310,6 +1310,127 @@ const SCREEN_INSERTS = {
       "  8 TK TL28SEP/LISTAP277",
     ],
   },
+  // After the FXP/P3,4,6 syntax drill (price three selected passengers at once), which
+  // again has no PNR retrieved yet -- so, same as the FXP/P4 fix above, a brand-new
+  // fictional PNR is needed, this time with at least 6 passengers so "passenger 6" is
+  // meaningful. A 6-passenger SILVA family group, Madrid-London round trip on IB.
+  // clear:true because the very next real screen (retrieve PNR Blood) has empty own
+  // output and would otherwise carry this fictional screen over indefinitely.
+  'classroom-25--15': {
+    text: ['A price is displayed for the selected passengers.'],
+    answers: ['PD'],
+    clear: true,
+    output: [
+      " 01 C             290 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  MAD",
+      "  LON IB 3170 C C 05NOV 0920 OK C                         30",
+      "  MAD IB 3171 C C 12NOV 1830 OK C                         30",
+      " ",
+      " EUR     260          MAD IB LON130.00 IB MAD130.00",
+      "                       NUC260.00END ROE 1.5701 SITI",
+      " EUR       30EU",
+      " ",
+      " EUR     290",
+      "RP/MADIB3344/MADIB3344         3344IB   05NOV /0740Z   K7QXR4",
+      "SILVA/ANA MRS  2.SILVA/BRUNO MR  3.SILVA/CARLA MISS  4.SILVA/DIEGO MR  5.SILVA/ELENA MRS  6.SILVA/FELIX MR",
+      "  7  IB3170 C 05NOV 4 MADLON HK6             0920  1035",
+      "  8  IB3171 C 12NOV 4 LONMAD HK6             1830  2145",
+      "  9 AP MAD 091 5527634-B",
+      " 10 TK TL29OCT/MADIB3344",
+    ],
+  },
+  // The next three gaps are on the REAL Blood/Ross PNR (PARAF0990/A4HH2C, 4 passengers,
+  // Geneva-London-Geneva on BA) that the lesson retrieves right after the drill above.
+  // Three consecutive FXP/P drill questions each show the retrieved PNR as reference
+  // material (needed to answer that very question, so it must be preserved, same as the
+  // earlier PARAF2970 fix), but none of them show the actual price result for the
+  // PREVIOUS question's command -- so, same mechanism, insert a genuine price screen
+  // after each drill, leaving the existing reference screens untouched. All three price
+  // the same fixed 2-segment itinerary (matching the convention of every real price
+  // block elsewhere in this lesson, none of which multiply the total by passenger
+  // count), so they share one identical price block. No clear:true needed: the following
+  // real screens are already self-sufficient (each carries its own real captured PNR).
+  'classroom-25-B-0': {
+    text: ['A price is displayed for the selected passengers.'],
+    answers: ['PD'],
+    output: [
+      " 01 C             195 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  GVA",
+      "  LHR BA 0625 M M 22AUG 1800 OK M                         30",
+      "  GVA BA 0622 M M 29AUG 0850 OK M                         30",
+      " ",
+      " EUR     175          GVA BA LHR 87.50 BA GVA 87.50",
+      "                       NUC175.00END ROE 1.5701 SITI",
+      " EUR       20EU",
+      " ",
+      " EUR     195",
+      "RP/PARAF0990/PARAF0990         1066TZ   19AUG /1099Z   A4HH2C",
+      "BLOOD/F MR  2.BLOOD/E MRS  3.ROSS/O MR  4.ROSS/T MRS",
+      "  5  BA 625 M 22AUG 7 GVALHR HK4          1800  1930",
+      "  6  BA 622 M 29AUG 7 LHRGVA HK4       4  0850  1115",
+      "  7 AP GVA 3476265-H/P1-2",
+      "  8 AP GVA 3635256-H/P3-4",
+      "  9 TK TL27AUG/PARAF0900",
+    ],
+  },
+  'classroom-25-B-1': {
+    text: ['A price is displayed for the selected passengers.'],
+    answers: ['PD'],
+    output: [
+      " 01 C             195 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  GVA",
+      "  LHR BA 0625 M M 22AUG 1800 OK M                         30",
+      "  GVA BA 0622 M M 29AUG 0850 OK M                         30",
+      " ",
+      " EUR     175          GVA BA LHR 87.50 BA GVA 87.50",
+      "                       NUC175.00END ROE 1.5701 SITI",
+      " EUR       20EU",
+      " ",
+      " EUR     195",
+      "RP/PARAF0990/PARAF0990         1066TZ   19AUG /1099Z   A4HH2C",
+      "BLOOD/F MR  2.BLOOD/E MRS  3.ROSS/O MR  4.ROSS/T MRS",
+      "  5  BA 625 M 22AUG 7 GVALHR HK4          1800  1930",
+      "  6  BA 622 M 29AUG 7 LHRGVA HK4       4  0850  1115",
+      "  7 AP GVA 3476265-H/P1-2",
+      "  8 AP GVA 3635256-H/P3-4",
+      "  9 TK TL27AUG/PARAF0900",
+    ],
+  },
+  'classroom-25-B-2': {
+    text: ['A price is displayed for the selected passengers.'],
+    answers: ['PD'],
+    output: [
+      " 01 C             195 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  GVA",
+      "  LHR BA 0625 M M 22AUG 1800 OK M                         30",
+      "  GVA BA 0622 M M 29AUG 0850 OK M                         30",
+      " ",
+      " EUR     175          GVA BA LHR 87.50 BA GVA 87.50",
+      "                       NUC175.00END ROE 1.5701 SITI",
+      " EUR       20EU",
+      " ",
+      " EUR     195",
+      "RP/PARAF0990/PARAF0990         1066TZ   19AUG /1099Z   A4HH2C",
+      "BLOOD/F MR  2.BLOOD/E MRS  3.ROSS/O MR  4.ROSS/T MRS",
+      "  5  BA 625 M 22AUG 7 GVALHR HK4          1800  1930",
+      "  6  BA 622 M 29AUG 7 LHRGVA HK4       4  0850  1115",
+      "  7 AP GVA 3476265-H/P1-2",
+      "  8 AP GVA 3635256-H/P3-4",
+      "  9 TK TL27AUG/PARAF0900",
+    ],
+  },
 };
 function applyScreenInserts(mode, number, part, screens) {
   const result = [];
