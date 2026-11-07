@@ -1588,6 +1588,106 @@ const SCREEN_INSERTS = {
       "  8 TK TL20AUG/PARAF2970",
     ],
   },
+  // Final review section: three standalone recall questions with no PNR already
+  // established (same situation as the very first syntax drills fixed in this lesson),
+  // so each needs its own purpose-built fictional PNR. All three need clear:true, since
+  // in each case the very next real screen has empty own output and would otherwise
+  // carry the fictional screen over into an unrelated question (or, for the last one,
+  // into the end-of-lesson message).
+  'classroom-25-B-14': {
+    // After FXP/S3,5,7 (price only element lines 3, 5 and 7). A single-passenger,
+    // 6-segment itinerary so that items 3, 5 and 7 are themselves genuine flight
+    // segments. Price block shows only the three selected segments; the PNR redisplay
+    // below keeps the full, untouched 6-segment itinerary -- same convention as the
+    // very first segment-subset insert built in this lesson.
+    text: ['A price is displayed for the selected segments.'],
+    answers: ['PD'],
+    clear: true,
+    output: [
+      " 01 C             260 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  BCN",
+      "  CDG AF 1620 C C 03MAR 1010 OK C                         30",
+      "  MUC LH 1830 C C 05MAR 1320 OK C                         30",
+      "  ROM OS 0456 C C 07MAR 1140 OK C                         30",
+      " ",
+      " EUR     240          BCN AF CDG80.00 LH MUC90.00 OS ROM70.00NUC240.00END",
+      "                       ROE1.0953SITI",
+      " EUR       20EU",
+      " ",
+      " EUR     260",
+      "RP/VLCAF8821/VLCAF8821         8821AF   28FEB /1120Z   S2TWX9",
+      "SASTRE/IRENE MS",
+      "  2   VY1001 C 03MAR 2 VLCBCN HK1         I  0710  0815",
+      "  3   AF1620 C 03MAR 2 BCNCDG HK1         2  1010  1145",
+      "  4   LH1090 C 05MAR 4 CDGFRA HK1         I  0905  1035",
+      "  5   LH1830 C 05MAR 4 FRAMUC HK1         2  1320  1415",
+      "  6   OS 123 C 07MAR 6 MUCVIE HK1         I  0805  0900",
+      "  7   OS 456 C 07MAR 6 VIEROM HK1         2  1140  1310",
+      "  8 AP VLC 096 1234567-B",
+      "  9 TK TL28FEB/VLCAF8821",
+    ],
+  },
+  'classroom-25-B-15': {
+    // After FXP/P1,5 (price just passengers 1 and 5). A 5-passenger family so that
+    // "passenger 5" is meaningful. Plain adult fare, separate tax line, matching the
+    // multi-passenger convention used throughout this lesson (one fixed price for the
+    // itinerary, not multiplied by passenger count).
+    text: ['A price is displayed for the selected passengers.'],
+    answers: ['PD'],
+    clear: true,
+    output: [
+      " 01 C             290 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  MAD",
+      "  FRA LH 1130 C C 04APR 0915 OK C                         30",
+      "  MAD LH 1131 C C 11APR 1810 OK C                         30",
+      " ",
+      " EUR     260          MAD LH FRA130.00 LH MAD130.00NUC260.00",
+      "                       ROE1.5701SITI",
+      " EUR       30EU",
+      " ",
+      " EUR     290",
+      "RP/MADLH4471/MADLH4471         4471LH   25MAR /0950Z   P9XJT6",
+      "PASTOR/JAVIER MR  2.PASTOR/ROSA MRS  3.PASTOR/DIEGO MR  4.PASTOR/NOA MISS  5.PASTOR/LEO MR",
+      "  6   LH1130 C 04APR 6 MADFRA HK5         I  0915  1105",
+      "  7   LH1131 C 11APR 6 FRAMAD HK5         2  1810  2000",
+      "  8 AP MAD 091 7723841-B",
+      "  9 TK TL29MAR/MADLH4471",
+    ],
+  },
+  'classroom-25-B-16': {
+    // After FXP/P3/RCH (price passenger 3, a child, using child fares). Child-fare
+    // YCH/SR style, no separate tax line, matching every other /RCH screen built in
+    // this lesson.
+    text: ['A price is displayed for the selected passenger, using child fares.'],
+    answers: ['PD'],
+    clear: true,
+    output: [
+      " 01 YCH          140 *                       *  SR  * YES *",
+      "  ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  BCN",
+      "  LIS TP 1872 Y Y 15MAY 0920 OK YCH                       30",
+      "  BCN TP 1879 Y Y 22MAY 1830 OK YCH                       30",
+      "  ",
+      " EUR     140          BCN TP LIS 70.00 TP BCN 70.00NUC140.00",
+      "                       END ROE1.5701 SITI",
+      "  ",
+      " EUR     140",
+      "RP/BCNTP6630/BCNTP6630         6630TP   08MAY /1105Z   H4LMZ2",
+      "ROJAS/MANUEL MR  2.ROJAS/LAURA MRS  3.ROJAS/PABLO MR",
+      "  4   TP1872 C 15MAY 5 BCNLIS HK3         I  0920  1035",
+      "  5   TP1879 C 22MAY 5 LISBCN HK3         2  1830  2145",
+      "  6 AP BCN 093 4487621-B",
+      "  7 TK TL10MAY/BCNTP6630",
+    ],
+  },
 };
 function applyScreenInserts(mode, number, part, screens) {
   const result = [];
