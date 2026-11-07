@@ -1467,6 +1467,127 @@ const SCREEN_INSERTS = {
       "  8 TK TL08NOV/MADIB5023",
     ],
   },
+  // The next four gaps are on the REAL Edwards PNR (PARAF2970/D2GR4X, 4 passengers:
+  // Paul, Donna, Claire, Evelyn; 2 segments: item 5 BA622 LHR-GVA 22AUG, item 6 BA755
+  // GVA-LHR 30SEP). Four consecutive FXP drill questions each show the retrieved PNR as
+  // reference material (needed to answer that very question, so it must be preserved,
+  // same as every earlier cluster in this lesson), but none of them show the actual
+  // price result for the PREVIOUS question's command -- same mechanism, insert a
+  // genuine price screen after each drill, leaving the existing reference screens
+  // untouched. No clear:true needed: the following real screens are already
+  // self-sufficient (each carries its own real captured PNR). The redisplay in each new
+  // screen drops only passenger 1's own leading item number (bare form), matching every
+  // other price-result screen built in this lesson; line 2 (item 4, Evelyn, which wraps
+  // to its own physical line in the real PNR) keeps its own leading number unchanged.
+  'classroom-25-B-9': {
+    // After FXP/P4/RCH (price Evelyn alone, child fare, both segments of the itinerary).
+    text: ['A price is displayed for the selected passenger, using child fares.'],
+    answers: ['PD'],
+    output: [
+      " 01 YCH          190 *                       *  SR  * YES *",
+      "  ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  LON",
+      "  GVA BA 0622 M M 22AUG 0850 OK YCH                       30",
+      "  LON BA 0755 M M 30SEP 1245 OK YCH                       30",
+      "  ",
+      " EUR     190          LON BA GVA 95.00 BA LON 95.00NUC190.00",
+      "                       END ROE1.5701 SITI",
+      "  ",
+      " EUR     190",
+      "RP/PARAF2970/PARAF2970         2356FP   10AUG /2021Z   D2GR4X",
+      "EDWARDS/PAUL MR    2.EDWARDS/DONNA MRS   3.EDWARDS/CLAIRE MISS",
+      "  4.EDWARDS/EVELYN MISS",
+      "  5  BA 622 M 22AUG 7 LHRGVA HK4       4  0850  1115",
+      "  6  BA 755 M 30SEP 5 GVALHR HK4          1245  1335",
+      "  7 AP LON 0181 2783634-H",
+      "  8 TK TL20AUG/PARAF2970",
+    ],
+  },
+  'classroom-25-B-10': {
+    // After FXP/P3,4/RCH (price Claire+Evelyn, child fare). Same fixed itinerary as
+    // above, so (matching every multi-passenger price block elsewhere in this lesson,
+    // none of which multiply the total by passenger count) the identical price block.
+    text: ['A price is displayed for the selected passengers, using child fares.'],
+    answers: ['PD'],
+    output: [
+      " 01 YCH          190 *                       *  SR  * YES *",
+      "  ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  LON",
+      "  GVA BA 0622 M M 22AUG 0850 OK YCH                       30",
+      "  LON BA 0755 M M 30SEP 1245 OK YCH                       30",
+      "  ",
+      " EUR     190          LON BA GVA 95.00 BA LON 95.00NUC190.00",
+      "                       END ROE1.5701 SITI",
+      "  ",
+      " EUR     190",
+      "RP/PARAF2970/PARAF2970         2356FP   10AUG /2021Z   D2GR4X",
+      "EDWARDS/PAUL MR    2.EDWARDS/DONNA MRS   3.EDWARDS/CLAIRE MISS",
+      "  4.EDWARDS/EVELYN MISS",
+      "  5  BA 622 M 22AUG 7 LHRGVA HK4       4  0850  1115",
+      "  6  BA 755 M 30SEP 5 GVALHR HK4          1245  1335",
+      "  7 AP LON 0181 2783634-H",
+      "  8 TK TL20AUG/PARAF2970",
+    ],
+  },
+  'classroom-25-B-11': {
+    // After FXP/S6/P2 (price only segment 6, Geneva-London, just for Donna -- plain
+    // adult fare, no discount code). Single-segment style with its own separate tax
+    // line, matching the earlier classroom-25--8 single-segment convention.
+    text: ['A price is displayed for the selected segment and passenger.'],
+    answers: ['PD'],
+    output: [
+      " 01 C             110 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  GVA",
+      "  LON BA 0755 M M 30SEP 1245 OK M                         30",
+      " ",
+      " EUR     100          GVA BA LON100.00NUC100.00END",
+      "                       ROE1.5701SITI",
+      " EUR       10EU",
+      " ",
+      " EUR     110",
+      "RP/PARAF2970/PARAF2970         2356FP   10AUG /2021Z   D2GR4X",
+      "EDWARDS/PAUL MR    2.EDWARDS/DONNA MRS   3.EDWARDS/CLAIRE MISS",
+      "  4.EDWARDS/EVELYN MISS",
+      "  5  BA 622 M 22AUG 7 LHRGVA HK4       4  0850  1115",
+      "  6  BA 755 M 30SEP 5 GVALHR HK4          1245  1335",
+      "  7 AP LON 0181 2783634-H",
+      "  8 TK TL20AUG/PARAF2970",
+    ],
+  },
+  'classroom-25-B-12': {
+    // After FXP/P3-4/S5/RCH (price only segment 5, London-Geneva, just for Claire and
+    // Evelyn, child fare). Single-segment child-fare style (no separate tax line, same
+    // convention as the two-segment child-fare screens above).
+    text: ['A price is displayed for the selected segment and passengers, using child fares.'],
+    answers: ['PD'],
+    output: [
+      " 01 YCH           85 *                       *  SR  * YES *",
+      "  ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  LON",
+      "  GVA BA 0622 M M 22AUG 0850 OK YCH                       30",
+      "  ",
+      " EUR      85          LON BA GVA 85.00NUC 85.00",
+      "                       END ROE1.5701 SITI",
+      "  ",
+      " EUR      85",
+      "RP/PARAF2970/PARAF2970         2356FP   10AUG /2021Z   D2GR4X",
+      "EDWARDS/PAUL MR    2.EDWARDS/DONNA MRS   3.EDWARDS/CLAIRE MISS",
+      "  4.EDWARDS/EVELYN MISS",
+      "  5  BA 622 M 22AUG 7 LHRGVA HK4       4  0850  1115",
+      "  6  BA 755 M 30SEP 5 GVALHR HK4          1245  1335",
+      "  7 AP LON 0181 2783634-H",
+      "  8 TK TL20AUG/PARAF2970",
+    ],
+  },
 };
 function applyScreenInserts(mode, number, part, screens) {
   const result = [];
