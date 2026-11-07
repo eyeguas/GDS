@@ -1128,6 +1128,173 @@ function applyScreenSplits(mode, number, part, screens) {
   }
   return result;
 }
+// Classroom lesson 25 (pricing options) asks, in four separate steps, for an entry that
+// prices one or more specific segments (FXP/S3-5, FXP/S3,5, FXP/S4, then the full FXP) --
+// but the original .DAT never captured the resulting price for any of them: three of the
+// four steps that should show it are simply blank, and the fourth (the step after the
+// full-itinerary FXP) only captured the tail end of the real screen (the PNR redisplay),
+// not the price breakdown above it. Unlike SCREEN_OVERRIDES (a flat swap of ONE existing
+// step's content), these four steps are themselves the places the LESSON ASKS the next
+// question from -- paso 8's "which segments price Frankfurt-Madrid/Munich-Paris?" and the
+// following two steps all depend on the student being able to see the real retrieved PNR
+// to answer them, so overwriting any of those steps' own content would remove the very
+// reference the student needs. Inserting a brand-new step right after each one instead --
+// exactly as SCREEN_SPLITS already does by splitting an existing screen into two steps,
+// just without reusing either half's original text/answers -- shows the missing price
+// result as its own step, then leaves every existing step's own text, answers and output
+// completely untouched.
+// Keyed the same way as SCREEN_SPLITS. Each entry describes one brand-new pager step
+// (text + a bare "PD" to continue, like the lesson's own "A price is displayed for just
+// the specified segment..." steps) inserted immediately AFTER the screen with this id.
+const SCREEN_INSERTS = {
+  // After paso 6 (FXP/S3-5): a pure syntax drill with no PNR retrieved yet, same situation
+  // as the FQN drills in lesson 23 -- built from the WARREN/ANNA fictional 5-segment PNR
+  // already introduced for paso 3 (classroom-25-2), pricing its segments 3, 4 and 5.
+  'classroom-25--5': {
+    text: ['A price is displayed for the selected segments.'],
+    answers: ['PD'],
+    clear: true, // the next step starts a brand new, unrelated real PNR retrieval (C9JY7T)
+    // -- this fictional drill screen must not linger underneath it.
+    output: [
+      " 01 C             315 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  FCO                                    ",
+      "  ATH AZ 0612 C C 14SEP 1320 OK C                         30",
+      "  IST OA 0141 C C 18SEP 0920 OK C                         30",
+      "  CAI TK 1757 C C 21SEP 1830 OK C                         30",
+      " ",
+      " EUR     300          FCO AZ ATH95.00 OA IST80.00 TK CAI110.00NUC285.00END",
+      "                       ROE1.0953SITI",
+      " EUR       15EU",
+      " ",
+      " EUR     315",
+      "RP/BCNIB1498/BCNIB1498         7733AZ   05SEP /0730Z   F3TKQ8",
+      "WARREN/ANNA MS ",
+      "  2   IB3182 C 14SEP 1 BCNFCO HK1         I  0855  1050",
+      "  3   AZ0612 C 14SEP 1 FCOATH HK1         2  1320  1640",
+      "  4   OA0141 C 18SEP 5 ATHIST HK1         I  0920  1045",
+      "  5   TK1757 C 21SEP 1 ISTCAI HK1         2  1830  2155",
+      "  6   MS0785 C 24SEP 4 CAIBCN HK1         I  0140  0515",
+      "  7 AP BCN 089 543672-B",
+      "  8 TK TL05SEP/BCNIB1498",
+    ],
+  },
+  // After paso 8 (FXP/S3,5 -- Frankfurt-Madrid and Munich-Paris, the real C9JY7T/PARAF2970
+  // PNR already retrieved at that step): two disjoint segments, each with its own
+  // origin/destination fare-table row, using that PNR's own real flight/date/time details.
+  'classroom-25--7': {
+    text: ['A price is displayed for the selected segments.'],
+    answers: ['PD'],
+    output: [
+      " 01 C             275 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  FRA                                    ",
+      "  MAD IB 3501 C C 22JUN 1255 OK C                         30",
+      "  MUC                                    ",
+      "  CDG AF 1509 C C 27JUN 1655 OK C                         30",
+      " ",
+      " EUR     265          FRA IB MAD150.00 MUC AF CDG130.00NUC280.00END",
+      "                       ROE1.5701SITI",
+      " EUR       10EU",
+      " ",
+      " EUR     275",
+      "RP/PARAF2970/PARAF2970         2356FP   12JUN /2021Z   C9JY7T",
+      "MICHELS/YVES MR",
+      "  2   AF1404 C 20JUN 7 CDGFRA HK1    1310 2D 1330  1455",
+      "  3   IB3501 C 22JUN 2 FRAMAD HK1         2  1255  1525",
+      "  4   LH 130 V 25JUN 5 MADMUC HK1         I  1000  1055",
+      "  5   AF1509 C 27JUN 7 MUCCDG HK1    1655 I  1715  1855",
+      "  6 AP PAR 64759823-B",
+      "  7 TK TL18JUN/PARAF2970",
+    ],
+  },
+  // After paso 9 (FXP/S4 -- Madrid-Munich only). Ends with the SAME fully-prefixed PNR
+  // redisplay already real-captured at pasos 8/9 (not the bare, stripped-prefix form used
+  // elsewhere) specifically so that the following step -- paso 10, whose own real capture
+  // is empty and which otherwise just carries over whatever the previous step last showed
+  // -- keeps showing exactly the reference screen it already shows today.
+  'classroom-25--8': {
+    text: ['A price is displayed for the selected segment.'],
+    answers: ['PD'],
+    output: [
+      " 01 C             130 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  MAD                                    ",
+      "  MUC LH  130 C C 25JUN 1000 OK C                         30",
+      " ",
+      " EUR     120          MAD LH MUC70.00NUC70.00END",
+      "                       ROE1.5701SITI",
+      " EUR       10EU",
+      " ",
+      " EUR     130",
+      "RP/PARAF2970/PARAF2970         2356FP   12JUN /2021Z   C9JY7T",
+      "  1.MICHELS/YVES MR",
+      "  2   AF1404 C 20JUN 7 CDGFRA HK1    1310 2D 1330  1455   *1A/",
+      "  3   IB3501 C 22JUN 2 FRAMAD HK1         2  1255  1525   *1A/",
+      "  4   LH 130 V 25JUN 5 MADMUC HK1         I  1000  1055   *1A/",
+      "  5   AF1509 C 27JUN 7 MUCCDG HK1    1655 I  1715  1855   *1A/",
+      "  6 AP PAR 64759823-B",
+      "  7 TK TL18JUN/PARAF2970",
+    ],
+  },
+  // After paso 10 (the full FXP, pricing the entire itinerary -- all four segments, a
+  // single contiguous loop CDG-FRA-MAD-MUC-CDG).
+  'classroom-25--9': {
+    text: ['A price is displayed for the entire itinerary.'],
+    answers: ['PD'],
+    output: [
+      " 01 C             450 *                       *      * YES *",
+      " ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  CDG                                    ",
+      "  FRA AF 1404 C C 20JUN 1310 OK C                         30",
+      "  MAD IB 3501 C C 22JUN 1255 OK C                         30",
+      "  MUC LH  130 C C 25JUN 1000 OK C                         30",
+      "  CDG AF 1509 C C 27JUN 1655 OK C                         30",
+      " ",
+      " EUR     430          CDG AF FRA110.00 IB MAD150.00 LH MUC70.00 AF",
+      "                       CDG130.00NUC460.00END",
+      "                       ROE1.5701SITI",
+      " EUR       20EU",
+      " ",
+      " EUR     450",
+      "RP/PARAF2970/PARAF2970         2356FP   12JUN /2021Z   C9JY7T",
+      "MICHELS/YVES MR",
+      "  2   AF1404 C 20JUN 7 CDGFRA HK1    1310 2D 1330  1455",
+      "  3   IB3501 C 22JUN 2 FRAMAD HK1         2  1255  1525",
+      "  4   LH 130 V 25JUN 5 MADMUC HK1         I  1000  1055",
+      "  5   AF1509 C 27JUN 7 MUCCDG HK1    1655 I  1715  1855",
+      "  6 AP PAR 64759823-B",
+      "  7 TK TL18JUN/PARAF2970",
+    ],
+  },
+};
+function applyScreenInserts(mode, number, part, screens) {
+  const result = [];
+  for (const screen of screens) {
+    result.push(screen);
+    const config = SCREEN_INSERTS[`${mode}-${number}-${part}-${screen.id}`];
+    if (!config) continue;
+    result.push({
+      id: screen.id + 0.5,
+      title: [],
+      text: config.text,
+      answers: config.answers,
+      output: config.output,
+      hasSegmentDetail: false,
+      clear: Boolean(config.clear),
+      end: false,
+    });
+  }
+  return result;
+}
 // Screens that should show no carried-over terminal at all, keyed the same way as
 // ANSWER_FIXES/TEXT_FIXES. Reuses the same reset the engine already gives a real type-9
 // CLEAR/CLS/END marker (see terminalForCurrentScreen's "screen.clear || screen.end" check) --
@@ -1173,7 +1340,7 @@ async function loadLesson(mode, number) {
       break;
     }
     const parsed = parseLesson(await response.text()).map(screen => applyClearFix(mode, number, part, applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, applyOutputFix(mode, number, part, screen)))));
-    screens = screens.concat(applyScreenSplits(mode, number, part, parsed));
+    screens = screens.concat(applyScreenInserts(mode, number, part, applyScreenSplits(mode, number, part, parsed)));
   }
   return screens;
 }
