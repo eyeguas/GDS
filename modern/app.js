@@ -1431,6 +1431,42 @@ const SCREEN_INSERTS = {
       "  9 TK TL27AUG/PARAF0900",
     ],
   },
+  // After the FXP/P3,4/RCH syntax drill (price passengers 3 and 4 with a child-fare
+  // discount). This is a pure syntax example, unrelated to the currently retrieved
+  // BLEICHEN PNR (which only has 3 passengers, so "passenger 4" isn't meaningful there)
+  // -- same situation as the earlier FXP/P4 and FXP/P3,4,6 fixes -- so a brand-new
+  // fictional PNR is needed with >=4 passengers, two of them children. Modeled directly
+  // on the REAL child-fare price screen captured at paso 33 (response to paso 32's
+  // FXP/P3/RCH): same " 01 YCH ... * SR *" header, same "YCH" fare basis per segment,
+  // and the same no-separate-tax-line convention (fare-construction total equals the
+  // final total, exactly as in that real screen). clear:true because the very next real
+  // screen (retrieve PNR D2GR4X) has empty own output and would otherwise carry this
+  // fictional screen over indefinitely.
+  'classroom-25-B-7': {
+    text: ['A price is displayed for the selected passengers, using child fares.'],
+    answers: ['PD'],
+    clear: true,
+    output: [
+      " 01 YCH          260 *                       *  SR  * YES *",
+      "  ",
+      "------------------------------------------------------------ ",
+      "     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ",
+      "  MAD",
+      "  BOS IB 0502 Y Y 15NOV 1015 OK YCH                       30",
+      "  MAD IB 0503 Y Y 22NOV 1920 OK YCH                       30",
+      "  ",
+      " EUR     260          MAD IB BOS130.00 IB MAD130.00NUC260.00",
+      "                       END ROE1.5701 SITI",
+      "  ",
+      " EUR     260",
+      "RP/MADIB5023/MADIB5023         5023IB   15NOV /0845Z   N6WFQ8",
+      "MORENO/CARLOS MR  2.MORENO/LUCIA MRS  3.MORENO/HUGO MR  4.MORENO/VERA MISS",
+      "  5  IB0502 Y 15NOV 7 MADBOS HK4          1015  1420",
+      "  6  IB0503 Y 22NOV 7 BOSMAD HK4          1920  0825+1",
+      "  7 AP MAD 091 6634521-B",
+      "  8 TK TL08NOV/MADIB5023",
+    ],
+  },
 };
 function applyScreenInserts(mode, number, part, screens) {
   const result = [];
