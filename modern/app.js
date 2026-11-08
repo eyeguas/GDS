@@ -2079,12 +2079,20 @@ function buildOsDisplay(command, startCount = 0) {
 // its own new numbered item), a PNR has only one form of payment at a time, so re-entering
 // FP replaces the stored value in place -- see the single fpItem variable (not an
 // accumulating array) in terminalForCurrentScreenRaw.
+// A single entry may combine several fare elements at once, separated by semicolons and in
+// any order (e.g. "FPCASH;FVIB;FM8", one of lesson 26's own taught shorthands) -- splitting
+// first lets each of parseFpCommand/parseFvCommand/parseFmCommand below find its own element
+// among the others without the other elements' text throwing off its match.
+function splitFareElements(command) {
+  return command.trim().toUpperCase().replace(/\s+/g, '').split(';').filter(Boolean);
+}
 function parseFpCommand(command) {
-  const body = command.trim().toUpperCase().replace(/\s+/g, '');
-  const card = /^FP(CC[A-Z]{2}\d+)\/X?(\d{3,4})$/.exec(body);
-  if (card) return { detail: `${card[1]}/${card[2]}` };
-  const plain = /^FP([A-Z]+)$/.exec(body);
-  if (plain) return { detail: plain[1] };
+  for (const part of splitFareElements(command)) {
+    const card = /^FP(CC[A-Z]{2}\d+)\/X?(\d{3,4})$/.exec(part);
+    if (card) return { detail: `${card[1]}/${card[2]}` };
+    const plain = /^FP([A-Z]+)$/.exec(part);
+    if (plain) return { detail: plain[1] };
+  }
   return null;
 }
 function canonicalFpAnswer(answers) {
@@ -2095,6 +2103,58 @@ function canonicalFpAnswer(answers) {
 }
 function buildFpDisplay(command, itemNumber) {
   const parsed = parseFpCommand(command);
+  if (!parsed) return null;
+  return { number: itemNumber, detail: parsed.detail };
+}
+// FV stores the validating carrier as a bare two-letter airline code (FVAA, FVAF, FVUA...).
+// Like FP, a PNR only ever has one validating carrier at a time, so re-entering FV replaces
+// the stored value in place -- see the single fvItem variable in terminalForCurrentScreenRaw.
+// Real captures (AM26/AM27, LSN26C, LSN27B, Q26) all show this as a plain "  N FV <code>"
+// numbered PNR item (e.g. "  7 FV BA", "  9 FV AF"), the same bare-echo convention as FP.
+function parseFvCommand(command) {
+  for (const part of splitFareElements(command)) {
+    const match = /^FV([A-Z]{2})$/.exec(part);
+    if (match) return { detail: match[1] };
+  }
+  return null;
+}
+function canonicalFvAnswer(answers) {
+  for (const answer of answers) {
+    if (parseFvCommand(answer)) return answer;
+  }
+  return null;
+}
+function buildFvDisplay(command, itemNumber) {
+  const parsed = parseFvCommand(command);
+  if (!parsed) return null;
+  return { number: itemNumber, detail: parsed.detail };
+}
+// FM stores the commission rate, as either a percentage (FM9, or FM9.00 -- both accepted as
+// the very same entry) or, with a trailing A, a fixed amount (FM62.00A, or FM62A -- again
+// both accepted as the same entry). Real captures (AM26/27, LSN26C/27B, Q26) always show the
+// percentage form as a bare integer -- "  6 FM 9", never "  6 FM 9.00" -- so the decimal is
+// normalized away for display regardless of which of the two accepted forms was typed. No
+// real capture anywhere shows the fixed-amount form; its display follows the same bare-item
+// convention, normalized to two decimals (62.00A) so FM62.00A and FM62A render identically.
+// Like FP/FV, re-entering FM replaces the stored value in place via the single fmItem
+// variable.
+function parseFmCommand(command) {
+  for (const part of splitFareElements(command)) {
+    const fixed = /^FM(\d+(?:\.\d{1,2})?)A$/.exec(part);
+    if (fixed) return { detail: `${parseFloat(fixed[1]).toFixed(2)}A` };
+    const rate = /^FM(\d+(?:\.\d{1,2})?)$/.exec(part);
+    if (rate) return { detail: String(parseFloat(rate[1])) };
+  }
+  return null;
+}
+function canonicalFmAnswer(answers) {
+  for (const answer of answers) {
+    if (parseFmCommand(answer)) return answer;
+  }
+  return null;
+}
+function buildFmDisplay(command, itemNumber) {
+  const parsed = parseFmCommand(command);
   if (!parsed) return null;
   return { number: itemNumber, detail: parsed.detail };
 }
@@ -3077,6 +3137,10 @@ function terminalForCurrentScreenRaw() {
   let fpItem = null; // synthesized FP (form of payment) item, as { number, detail } -- a
   // single replaced-in-place value rather than an accumulating array, since a PNR only ever
   // has one form of payment at a time (see buildFpDisplay above).
+  let fvItem = null; // synthesized FV (validating carrier) item -- same single
+  // replaced-in-place shape as fpItem, for the same reason (see buildFvDisplay above).
+  let fmItem = null; // synthesized FM (commission rate) item -- same single
+  // replaced-in-place shape as fpItem/fvItem (see buildFmDisplay above).
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
   let fqdLines = null; // synthesized FQD fare-display echo -- unlike the others above, this is
@@ -3100,7 +3164,7 @@ function terminalForCurrentScreenRaw() {
     // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
     // catches those too, so synthesized state resets there just the same.
     if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; plainTerminal = null; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; plainTerminal = null; itemCount = 0;
     }
     // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
     // step's accepted answer unconditionally -- even when the CURRENT screen also carries
@@ -3117,6 +3181,8 @@ function terminalForCurrentScreenRaw() {
       const rmAnswer = canonicalRmAnswer(previous.answers);
       const osAnswer = canonicalOsAnswer(previous.answers);
       const fpAnswer = canonicalFpAnswer(previous.answers);
+      const fvAnswer = canonicalFvAnswer(previous.answers);
+      const fmAnswer = canonicalFmAnswer(previous.answers);
       const fqdAnswer = canonicalFqdAnswer(previous.answers);
       const fqdChangeAnswer = canonicalFqdChangeAnswer(previous.answers);
       const fqnAnswer = canonicalFqnAnswer(previous.answers);
@@ -3146,12 +3212,44 @@ function terminalForCurrentScreenRaw() {
       } else if (osAnswer) {
         const newLines = buildOsDisplay(osAnswer, itemCount);
         if (newLines.length) { osLines = osLines.concat(newLines); itemCount += newLines.length; }
-      } else if (fpAnswer) {
-        // Replaces the stored value in place (keeping the same item number once one has
-        // been assigned) rather than appending a new item -- see fpItem's declaration above.
-        if (!fpItem) itemCount += 1;
-        const built = buildFpDisplay(fpAnswer, fpItem ? fpItem.number : itemCount);
-        if (built) fpItem = built;
+      } else if (fpAnswer || fvAnswer || fmAnswer) {
+        // A single entry may set more than one of these at once (e.g. the taught shorthand
+        // "FPCASH;FVIB;FM8"), so each is applied independently here rather than as mutually
+        // exclusive alternatives -- fpAnswer/fvAnswer/fmAnswer are each already the result of
+        // scanning the SAME previous.answers for their own element (see splitFareElements),
+        // so only the ones actually present in the entered command end up firing. Each
+        // replaces its own stored value in place (keeping the same item number once one has
+        // been assigned) rather than appending a new item -- see fpItem/fvItem/fmItem's
+        // declarations above.
+        //
+        // A real captured screen can ALSO already carry its own FP/FV/FM line (classified as
+        // a generic numbered "segment" line by extractPnrCapture, same as any other PNR
+        // element never specifically recognized there) -- e.g. a review quiz that re-drills
+        // the very same FP/FV/FM entry already shown in an earlier real capture, without any
+        // reset in between. Starting a brand-new tracked item there would double up as a
+        // second, conflicting numbered line sitting right next to the still-visible real one
+        // (seen in review-26's own quiz). hasRealFareLine guards exactly that case: once a
+        // real line for a given code is on screen, a not-yet-tracked item of that same code is
+        // left alone (the real line keeps representing it) rather than piling a duplicate on
+        // top -- same "the real, already-captured line wins" principle already applied
+        // elsewhere (e.g. AM27/28/29's plainTerminal fallback), just reached here instead of
+        // bailing out earlier.
+        const hasRealFareLine = code => segmentLines.some(line => new RegExp(`\\d\\s+${code}\\b`).test(line));
+        if (fpAnswer && !(!fpItem && hasRealFareLine('FP'))) {
+          if (!fpItem) itemCount += 1;
+          const built = buildFpDisplay(fpAnswer, fpItem ? fpItem.number : itemCount);
+          if (built) fpItem = built;
+        }
+        if (fvAnswer && !(!fvItem && hasRealFareLine('FV'))) {
+          if (!fvItem) itemCount += 1;
+          const built = buildFvDisplay(fvAnswer, fvItem ? fvItem.number : itemCount);
+          if (built) fvItem = built;
+        }
+        if (fmAnswer && !(!fmItem && hasRealFareLine('FM'))) {
+          if (!fmItem) itemCount += 1;
+          const built = buildFmDisplay(fmAnswer, fmItem ? fmItem.number : itemCount);
+          if (built) fmItem = built;
+        }
       } else if (fqdAnswer) {
         const fakeScreen = FQD_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
         fqdLines = fakeScreen || [buildFqdHeaderLine(fqdAnswer)];
@@ -3189,7 +3287,7 @@ function terminalForCurrentScreenRaw() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; itemCount = 0; plainTerminal = null;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; itemCount = 0; plainTerminal = null;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -3209,7 +3307,7 @@ function terminalForCurrentScreenRaw() {
           // extractPnrCapture, same as FV/FM) is already part of capture.segmentLines above,
           // so any still-tracked synthesized fpItem is now superseded -- clear it, or it
           // would double up as an extra, stale line below.
-          fpItem = null;
+          fpItem = null; fvItem = null; fmItem = null;
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
@@ -3255,9 +3353,9 @@ function terminalForCurrentScreenRaw() {
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; itemCount = 0;
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || fpItem || rfLine || noticeLine || (fqdLines && fqdLines.length) || (fqnLines && fqnLines.length)) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || fpItem || fvItem || fmItem || rfLine || noticeLine || (fqdLines && fqdLines.length) || (fqnLines && fqnLines.length)) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, a previously captured header/segment, or a fare-display
       // echo) is already under way -- that takes over, matching the original behavior for
@@ -3292,7 +3390,9 @@ function terminalForCurrentScreenRaw() {
   // guarantees the ascending order a real terminal always shows, regardless of which order the
   // lesson happens to teach these five elements in.
   const fpPart = fpItem ? [`  ${fpItem.number} FP ${fpItem.detail}`] : [];
-  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines, ...fpPart]
+  const fvPart = fvItem ? [`  ${fvItem.number} FV ${fvItem.detail}`] : [];
+  const fmPart = fmItem ? [`  ${fmItem.number} FM ${fmItem.detail}`] : [];
+  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines, ...fpPart, ...fvPart, ...fmPart]
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
   const fqdPart = fqdLines || fqnLines || [];
