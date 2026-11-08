@@ -2249,31 +2249,26 @@ function buildFoDisplay(command, itemNumber) {
   if (!parsed) return null;
   return { number: itemNumber, detail: parsed.detail };
 }
-// A bare "TTP" issues the ticket and, per the lesson's own wording, "ends the transaction
-// automatically" -- unlike every other fare element above, this isn't a numbered PNR item at
-// all, so it's handled separately rather than through buildXxDisplay/xxItem. There IS real
-// captured precedent for exactly this, later in this same lesson (a second bare "TTP", after
-// the PNR is rebuilt and re-ticketed): the very next screen's real output is the two lines
-// "OK" / "SENT", matching the lesson's own description ("displays the message OK"). That is
-// the convention synthesized here.
-//
-// "TTP/P2,3,4" (and its alternate spelling "TTP/P2-4") gets the exact same treatment as one
-// specific, narrow exception, NOT via a general "any qualified TTP" rule: most of this
-// lesson's many other qualified forms ("TTP/BP", "TTP/S4-6", "TTP/P1,3"...) already have their
-// own real "OK"/"SENT" capture at their very next screen, confirming that real terminals do
-// show exactly that -- but a handful of others (classroom-26 part C's "TTP/P2-3"/"TTP/P2,3"
-// and "TTP/RT") have no real capture AND their lesson text frames them as a hypothetical
-// syntax-recall question ("Assume a PNR has 4 name elements. What entry would be used...")
-// rather than an instruction to actually perform against the PNR this lesson has been
-// building ("Input this entry now") -- synthesizing a transaction-ending confirmation there
-// would wipe that PNR's still-relevant FP/FV/FM items for no textual justification. Only
-// "TTP/P2,3,4"/"TTP/P2-4" is both gap AND phrased as a real "input this now" action (it
-// directly follows the lesson's own explanation that TTP "ends the transaction automatically
-// and displays the message OK"), so only that one is matched here.
+// "TTP", with or without a passenger/segment/infant/reprint qualifier ("/BP", "/P4",
+// "/S4-6", "/INF", "/RT"...), issues the ticket and, per the lesson's own wording, "ends the
+// transaction automatically" -- unlike every other fare element above, this isn't a numbered
+// PNR item at all, so it's handled separately rather than through buildXxDisplay/xxItem.
+// Checked across this lesson's every TTP occurrence (bare and qualified, in all three parts):
+// most already have their own real "OK"/"SENT" (or, once, "OK "/"SENT" with a trailing
+// space) capture at the very next screen, confirming that is exactly what a real terminal
+// shows -- several others (e.g. "TTP/P2,3,4", "TTP/P2-3", "TTP/RT", "TTP/INF") have no real
+// capture of their own, the same gap bare "TTP" had before this synthesis first existed.
+// Matching every qualifier here, uniformly, is what actually ends a transaction in a real
+// system regardless of which passengers/segments it names -- the fare-storage elements
+// (FP/FV/FM/FE/FT/FO) it had built up are consumed into the issued ticket either way, so
+// clearing them on every TTP (qualified or not) rather than only some is the behavior a real
+// terminal would show, not a special case. A real capture always wins outright over this
+// synthesis (screen.output.length takes priority the same iteration), so matching every
+// qualifier is safe: it only has any visible effect on the ones with no real capture to begin
+// with.
 function canonicalTtpAnswer(answers) {
   for (const answer of answers) {
-    const normalized = answer && answer.trim().toUpperCase();
-    if (normalized === 'TTP' || normalized === 'TTP/P2,3,4' || normalized === 'TTP/P2-4') return answer;
+    if (answer && /^TTP(\/.+)?$/.test(answer.trim().toUpperCase())) return answer;
   }
   return null;
 }
