@@ -1063,6 +1063,15 @@ const TEXT_FIXES = {
   'agency-13--14': [
     ['as a general remark.', 'as a general remark, as follows:\n\n                RMCLIENT WILL ARRANGE CAR RENTAL LATER\n\nInput this entry.'],
   ],
+  // Agency lesson 26, screen id 11: the original text tells the student to "Press <F7> to
+  // view a sample ticket" before retrieving the next PNR -- F7 is a DOS-terminal shortcut
+  // this web app has no equivalent for (no sample-ticket viewer exists here), so the
+  // instruction is dead and confusing rather than actionable. Checked across the whole
+  // corpus: this is the only screen that mentions it. Dropped, with the remaining
+  // instruction recapitalized into its own complete sentence.
+  'agency-26--11': [
+    ['Press <F7> to view a sample ticket. Then retrieve the PNR for the record', 'Retrieve the PNR for the record'],
+  ],
 };
 function applyTextFix(mode, number, part, screen) {
   const fixes = TEXT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
