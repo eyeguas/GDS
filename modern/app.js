@@ -1741,6 +1741,19 @@ function applyClearFix(mode, number, part, screen) {
   if (!SCREEN_CLEAR_FIXES.has(`${mode}-${number}-${part}-${screen.id}`)) return screen;
   return { ...screen, clear: true };
 }
+// Screens to drop entirely, keyed the same way as ANSWER_FIXES/TEXT_FIXES. Reserved for a
+// screen that carries no content of any kind (no title, text, output or answers) -- a
+// dangling step with nothing to show and nothing to ask, rather than one whose own content
+// merely needs a fix.
+const SCREEN_DROPS = new Set([
+  // Classroom lesson 25, part B, screen id 18: a lone type-9 "END" marker with no text,
+  // output or answers of its own -- unlike every other lesson (checked across all 40), where
+  // that final marker lands on the SAME screen as the real closing message, here it's its own
+  // separate, otherwise-empty trailing entry right after the real "you have reached the end
+  // of the lesson" screen (id 17). Left in, it renders as one extra, completely blank step
+  // the student has to click past after the lesson has already ended.
+  'classroom-25-B-18',
+]);
 async function loadLesson(mode, number) {
   // Some lessons are split by the original DOS engine across several files
   // (base, B, C, …), each one a self-contained continuation of the previous.
@@ -1752,7 +1765,9 @@ async function loadLesson(mode, number) {
       if (part === '') throw new Error(t('lesson.loadError', { number }));
       break;
     }
-    const parsed = parseLesson(await response.text()).map(screen => applyClearFix(mode, number, part, applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, applyOutputFix(mode, number, part, screen)))));
+    const parsed = parseLesson(await response.text())
+      .filter(screen => !SCREEN_DROPS.has(`${mode}-${number}-${part}-${screen.id}`))
+      .map(screen => applyClearFix(mode, number, part, applyTextFix(mode, number, part, applyAnswerFix(mode, number, part, applyOutputFix(mode, number, part, screen)))));
     screens = screens.concat(applyScreenInserts(mode, number, part, applyScreenSplits(mode, number, part, parsed)));
   }
   return screens;
