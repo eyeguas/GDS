@@ -2064,6 +2064,40 @@ function buildOsDisplay(command, startCount = 0) {
   if (!parsed) return [];
   return [`  ${startCount + 1} OS ${parsed.carrier} ${parsed.text}`];
 }
+// FP<detail> stores the form of payment -- a keyword (CASH, CHEQUE/CHECK, NONREF) or a
+// credit-card entry (CC<2-letter code><account number>/[X]<expiry>). Classroom lesson 26
+// (Issuing Tickets) is the first lesson to teach it, and its own base .DAT file never
+// captures a system response for any of the several separate FPCASH/FPCHEQUE/credit-card
+// entries it has the student type -- but every real captured FP element shown anywhere else
+// in this curriculum (AM26-29, LSN26C, LSN27B, LSN29B, Q26) shows it as a numbered PNR item,
+// "FP" followed by exactly the same text the student typed after the FP prefix (e.g.
+// "FPCASH" -> "FP CASH", "FPCCAX6404173315650131/1228" -> "FP CCAX6404173315650131/1228"),
+// so that's what's synthesized here too. A credit-card expiry is sometimes also accepted
+// with a literal "X" typed right before the date (e.g. "FPCCEC499911122212345/X1128", an
+// alternate keystroke for the same date field) -- no real capture anywhere ever shows that
+// X on screen, so it's dropped from the synthesized line. Unlike RM/OS (each occurrence is
+// its own new numbered item), a PNR has only one form of payment at a time, so re-entering
+// FP replaces the stored value in place -- see the single fpItem variable (not an
+// accumulating array) in terminalForCurrentScreenRaw.
+function parseFpCommand(command) {
+  const body = command.trim().toUpperCase().replace(/\s+/g, '');
+  const card = /^FP(CC[A-Z]{2}\d+)\/X?(\d{3,4})$/.exec(body);
+  if (card) return { detail: `${card[1]}/${card[2]}` };
+  const plain = /^FP([A-Z]+)$/.exec(body);
+  if (plain) return { detail: plain[1] };
+  return null;
+}
+function canonicalFpAnswer(answers) {
+  for (const answer of answers) {
+    if (parseFpCommand(answer)) return answer;
+  }
+  return null;
+}
+function buildFpDisplay(command, itemNumber) {
+  const parsed = parseFpCommand(command);
+  if (!parsed) return null;
+  return { number: itemNumber, detail: parsed.detail };
+}
 // FQD<city-pair>/[D]<date> requests a fare display. Unlike RM/OS/AP/TK -- single PNR
 // elements whose entire display line is just the command's own text, reformatted -- a real
 // fare table's rows (prices, fare basis codes, rules, validity dates) are never knowable
@@ -3040,6 +3074,9 @@ function terminalForCurrentScreenRaw() {
   let segmentLines = [];
   let remarkLines = []; // synthesized RM/RC remark(s), shown last among the numbered items
   let osLines = []; // synthesized OS (optional-service) item(s), shown among the numbered items
+  let fpItem = null; // synthesized FP (form of payment) item, as { number, detail } -- a
+  // single replaced-in-place value rather than an accumulating array, since a PNR only ever
+  // has one form of payment at a time (see buildFpDisplay above).
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
   let fqdLines = null; // synthesized FQD fare-display echo -- unlike the others above, this is
@@ -3063,7 +3100,7 @@ function terminalForCurrentScreenRaw() {
     // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
     // catches those too, so synthesized state resets there just the same.
     if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; plainTerminal = null; itemCount = 0;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; plainTerminal = null; itemCount = 0;
     }
     // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
     // step's accepted answer unconditionally -- even when the CURRENT screen also carries
@@ -3079,6 +3116,7 @@ function terminalForCurrentScreenRaw() {
       const rfAnswer = canonicalRfAnswer(previous.answers);
       const rmAnswer = canonicalRmAnswer(previous.answers);
       const osAnswer = canonicalOsAnswer(previous.answers);
+      const fpAnswer = canonicalFpAnswer(previous.answers);
       const fqdAnswer = canonicalFqdAnswer(previous.answers);
       const fqdChangeAnswer = canonicalFqdChangeAnswer(previous.answers);
       const fqnAnswer = canonicalFqnAnswer(previous.answers);
@@ -3108,6 +3146,12 @@ function terminalForCurrentScreenRaw() {
       } else if (osAnswer) {
         const newLines = buildOsDisplay(osAnswer, itemCount);
         if (newLines.length) { osLines = osLines.concat(newLines); itemCount += newLines.length; }
+      } else if (fpAnswer) {
+        // Replaces the stored value in place (keeping the same item number once one has
+        // been assigned) rather than appending a new item -- see fpItem's declaration above.
+        if (!fpItem) itemCount += 1;
+        const built = buildFpDisplay(fpAnswer, fpItem ? fpItem.number : itemCount);
+        if (built) fpItem = built;
       } else if (fqdAnswer) {
         const fakeScreen = FQD_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
         fqdLines = fakeScreen || [buildFqdHeaderLine(fqdAnswer)];
@@ -3145,7 +3189,7 @@ function terminalForCurrentScreenRaw() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; itemCount = 0; plainTerminal = null;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; itemCount = 0; plainTerminal = null;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -3161,6 +3205,11 @@ function terminalForCurrentScreenRaw() {
           header = capture.header; rfLine = null; noticeLine = null;
           nameLines = capture.nameLines; segmentLines = capture.segmentLines;
           apLines = capture.apLines; tkLines = capture.tkLines; addressLines = capture.addressLines; remarkLines = []; osLines = [];
+          // A real FP item (classified as a generic numbered "segment" line by
+          // extractPnrCapture, same as FV/FM) is already part of capture.segmentLines above,
+          // so any still-tracked synthesized fpItem is now superseded -- clear it, or it
+          // would double up as an extra, stale line below.
+          fpItem = null;
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
@@ -3206,9 +3255,9 @@ function terminalForCurrentScreenRaw() {
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; itemCount = 0;
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || rfLine || noticeLine || (fqdLines && fqdLines.length) || (fqnLines && fqnLines.length)) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || fpItem || rfLine || noticeLine || (fqdLines && fqdLines.length) || (fqnLines && fqnLines.length)) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, a previously captured header/segment, or a fare-display
       // echo) is already under way -- that takes over, matching the original behavior for
@@ -3242,7 +3291,8 @@ function terminalForCurrentScreenRaw() {
   // ahead of an earlier one; sorting the combined set by that leading number is what actually
   // guarantees the ascending order a real terminal always shows, regardless of which order the
   // lesson happens to teach these five elements in.
-  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines]
+  const fpPart = fpItem ? [`  ${fpItem.number} FP ${fpItem.detail}`] : [];
+  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines, ...fpPart]
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
   const fqdPart = fqdLines || fqnLines || [];
