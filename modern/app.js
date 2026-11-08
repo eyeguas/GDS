@@ -786,6 +786,33 @@ const SCREEN_OUTPUT_FIXES = {
     "   OUTBOUND TRAVEL MUST BE COMMENCED DURING THE PERIOD OF    ",
     "   APPLICATION.                                              ",
   ],
+  // Classroom lesson 27 ("ADVANCE SEAT ASSIGNMENT"): most of its ST^ (seat request) syntax
+  // questions are pure recall drills with no PNR ever retrieved, so the original .DAT never
+  // captured any terminal response to them (unlike the handful of screens that DO retrieve a
+  // PNR first, e.g. id5/id13 of the base file and id1 of part B, where the system's response
+  // is already narrated at the very next screen with its own real SSR line, and which are
+  // therefore left untouched here). Every other ST^ answer in this lesson is otherwise
+  // followed by a screen with no response at all, with the file moving straight on to its
+  // next, unrelated question. Added here, on the screen immediately after each such answer
+  // (the same position a real captured response would occupy), a two-line acknowledgement:
+  // "Seat Requested" plus a short SSR-style line that reflects the specific option, seat or
+  // segment just requested -- consistent in spirit with this lesson's own real SSR captures
+  // (e.g. "SSR NSSA  IB HK1 MADFRA/18C,P1/S2"), but without inventing a carrier or airport
+  // pair that this question never supplied.
+  'classroom-27--3': ['Seat Requested', 'SSR NSSA REQUESTED,P1'], // response to id2's bare "ST"
+  'classroom-27--4': ['Seat Requested', 'SSR NSSA REQUESTED/AISLE,P1'], // response to id3's "ST/A"
+  'classroom-27--8': ['Seat Requested', 'SSR NSSA REQUESTED/HANDICAPPED,P1'], // response to id7's "ST/H"
+  'classroom-27--9': ['Seat Requested', 'SSR NSSA REQUESTED/BULKHEAD,P1'], // response to id8's "ST/B"
+  'classroom-27--10': ['Seat Requested', 'SSR NSSA REQUESTED/WINDOW-CRIB,P1'], // response to id9's "ST/WC"
+  'classroom-27--11': ['Seat Requested', 'SSR NSSA REQUESTED/WINDOW-MEDICAL,P1'], // response to id10's "ST/WM"
+  'classroom-27--12': ['Seat Requested', 'SSR NSSA REQUESTED/WINDOW,P1/S4'], // response to id11's "ST/W/S4"
+  'classroom-27--16': ['Seat Requested', 'SSR NSSA REQUESTED/WINDOW,P1/S6'], // response to id15's "ST/W/S6"
+  'classroom-27-B-0': ['Seat Requested', 'SSR NSSA REQUESTED/10D,P1/S7'], // response to base id16's "ST/10D/S7"
+  'classroom-27-B-4': ['Seat Requested', 'SSR NSSA REQUESTED/27J-L,P1/S3'], // response to part B id3's "ST/27J-L/S3"
+  'classroom-27-C-1': ['Seat Requested', 'SSR NSSA REQUESTED/WINDOW,P1/S4'], // response to part C id0's "ST/W/S4"
+  'classroom-27-C-2': ['Seat Requested', 'SSR NSSA REQUESTED/AISLE,P1'], // response to part C id1's "ST/A"
+  'classroom-27-C-3': ['Seat Requested', 'SSR NSSA REQUESTED/34C,P1/S6'], // response to part C id2's "ST/34C/S6"
+  'classroom-27-C-6': ['Seat Requested', 'SSR NSSA REQUESTED/WINDOW-UNACCOMPANIED MINOR,P1'], // response to part C id5's "ST/WU"
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
