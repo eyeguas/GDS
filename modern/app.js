@@ -2090,6 +2090,16 @@ function parseFpCommand(command) {
   for (const part of splitFareElements(command)) {
     const card = /^FP(CC[A-Z]{2}\d+)\/X?(\d{3,4})$/.exec(part);
     if (card) return { detail: `${card[1]}/${card[2]}` };
+    // A plain-keyword FP can carry a passenger-association suffix (e.g. "FPCHEQUE/P4") when
+    // the PNR has more than one traveler and only some of them pay this way -- the lesson's
+    // own example shows "FPCASH/P2" (and, for FE, "FENONREFUNDABLE/S4-5" for segment
+    // association, though no FE answer anywhere in the corpus actually uses it). Checked
+    // across the whole corpus: "/P4" on FP is the only such suffix any required answer ever
+    // uses. No real capture anywhere shows this suffixed form, so it follows the same
+    // bare-echo convention as the unsuffixed form, with the suffix kept verbatim after the
+    // slash (e.g. "CHEQUE/P4").
+    const assoc = /^FP([A-Z]+)\/(P\d+(?:[,-]\d+)*)$/.exec(part);
+    if (assoc) return { detail: `${assoc[1]}/${assoc[2]}` };
     const plain = /^FP([A-Z]+)$/.exec(part);
     if (plain) return { detail: plain[1] };
   }
@@ -2212,6 +2222,47 @@ function buildFtDisplay(command, itemNumber) {
   const parsed = parseFtCommand(command);
   if (!parsed) return null;
   return { number: itemNumber, detail: parsed.detail };
+}
+// FO exchanges a ticket (e.g. "FO009-6498720672MAD13SEP22": ticket number, issuing city,
+// issue date) -- a single alphanumeric/hyphenated token with no internal spaces, so it uses
+// the same splitFareElements whitespace-stripping as FP/FV/FM/FT. Checked across the whole
+// corpus: the only two FO answers anywhere both belong to this same lesson's own
+// exchange-ticket drills, and grepping every real captured output line for "FO" turns up
+// nothing -- there is no real capture anywhere of what a directly-typed FO command displays.
+// Same single-value, replaced-in-place shape via foItem, following the same bare-echo
+// convention already used for FE/FT where no precedent exists.
+function parseFoCommand(command) {
+  for (const part of splitFareElements(command)) {
+    const match = /^FO(.+)$/.exec(part);
+    if (match) return { detail: match[1] };
+  }
+  return null;
+}
+function canonicalFoAnswer(answers) {
+  for (const answer of answers) {
+    if (parseFoCommand(answer)) return answer;
+  }
+  return null;
+}
+function buildFoDisplay(command, itemNumber) {
+  const parsed = parseFoCommand(command);
+  if (!parsed) return null;
+  return { number: itemNumber, detail: parsed.detail };
+}
+// A bare "TTP" (no "/BP", "/P<n>", "/S<n>-<n>" qualifier) issues the ticket and, per the
+// lesson's own wording, "ends the transaction automatically" -- unlike every other fare
+// element above, this isn't a numbered PNR item at all, so it's handled separately rather
+// than through buildXxDisplay/xxItem. There IS real captured precedent for exactly this,
+// later in this same lesson (a second bare "TTP", after the PNR is rebuilt and re-ticketed):
+// the very next screen's real output is the two lines "OK" / "SENT", matching the lesson's own
+// description ("displays the message OK"). That is the convention synthesized here. The
+// qualified forms ("TTP/BP", "TTP/S4-6") already have their own real "OK"/"SENT" captures
+// elsewhere and are left untouched -- this only matches the bare keyword.
+function canonicalTtpAnswer(answers) {
+  for (const answer of answers) {
+    if (answer && answer.trim().toUpperCase() === 'TTP') return answer;
+  }
+  return null;
 }
 // FQD<city-pair>/[D]<date> requests a fare display. Unlike RM/OS/AP/TK -- single PNR
 // elements whose entire display line is just the command's own text, reformatted -- a real
@@ -3200,6 +3251,13 @@ function terminalForCurrentScreenRaw() {
   // replaced-in-place shape as fpItem/fvItem/fmItem (see buildFeDisplay above).
   let ftItem = null; // synthesized FT (tour code) item -- same single replaced-in-place
   // shape as fpItem/fvItem/fmItem/feItem (see buildFtDisplay above).
+  let foItem = null; // synthesized FO (exchange-ticket) item -- same single replaced-in-place
+  // shape as fpItem/fvItem/fmItem/feItem/ftItem (see buildFoDisplay above).
+  let ttpJustFired = false; // true for exactly the one iteration right after a bare "TTP"
+  // answer synthesizes its "OK"/"SENT" confirmation (see canonicalTtpAnswer above) -- consumed
+  // at the top of the NEXT iteration's reset check below, the same one-iteration-later reset a
+  // real captured "IGNORED" gets via isEphemeralConfirmation, since this confirmation is
+  // synthesized rather than real .DAT output and so never reaches isEphemeralConfirmation.
   let plainTerminal = null; // a fully authentic, non-PNR screen (availability, IGNORED...) -- wins outright
   let itemCount = 0;
   let fqdLines = null; // synthesized FQD fare-display echo -- unlike the others above, this is
@@ -3222,8 +3280,8 @@ function terminalForCurrentScreenRaw() {
     // lessons (e.g. LSN11) mark the same "transaction is over" moment with a bare type-9
     // CLEAR/CLS/END/IGNORED marker instead of a captured "IGNORED" text -- previous.end
     // catches those too, so synthesized state resets there just the same.
-    if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output))) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; plainTerminal = null; itemCount = 0;
+    if (previous && (previous.clear || previous.end || isEphemeralConfirmation(previous.output) || ttpJustFired)) {
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; foItem = null; plainTerminal = null; itemCount = 0; ttpJustFired = false;
     }
     // Accumulate synthesized name/contact/ticketing/received-from lines from the PREVIOUS
     // step's accepted answer unconditionally -- even when the CURRENT screen also carries
@@ -3244,6 +3302,8 @@ function terminalForCurrentScreenRaw() {
       const fmAnswer = canonicalFmAnswer(previous.answers);
       const feAnswer = canonicalFeAnswer(previous.answers);
       const ftAnswer = canonicalFtAnswer(previous.answers);
+      const foAnswer = canonicalFoAnswer(previous.answers);
+      const ttpAnswer = canonicalTtpAnswer(previous.answers);
       const fqdAnswer = canonicalFqdAnswer(previous.answers);
       const fqdChangeAnswer = canonicalFqdChangeAnswer(previous.answers);
       const fqnAnswer = canonicalFqnAnswer(previous.answers);
@@ -3273,7 +3333,7 @@ function terminalForCurrentScreenRaw() {
       } else if (osAnswer) {
         const newLines = buildOsDisplay(osAnswer, itemCount);
         if (newLines.length) { osLines = osLines.concat(newLines); itemCount += newLines.length; }
-      } else if (fpAnswer || fvAnswer || fmAnswer || feAnswer || ftAnswer) {
+      } else if (fpAnswer || fvAnswer || fmAnswer || feAnswer || ftAnswer || foAnswer) {
         // A single entry may set more than one of these at once (e.g. the taught shorthand
         // "FPCASH;FVIB;FM8"), so each is applied independently here rather than as mutually
         // exclusive alternatives -- fpAnswer/fvAnswer/fmAnswer/feAnswer/ftAnswer are each
@@ -3321,6 +3381,18 @@ function terminalForCurrentScreenRaw() {
           const built = buildFtDisplay(ftAnswer, ftItem ? ftItem.number : itemCount);
           if (built) ftItem = built;
         }
+        if (foAnswer && !(!foItem && hasRealFareLine('FO'))) {
+          if (!foItem) itemCount += 1;
+          const built = buildFoDisplay(foAnswer, foItem ? foItem.number : itemCount);
+          if (built) foItem = built;
+        }
+      } else if (ttpAnswer) {
+        // Ends the transaction outright (see canonicalTtpAnswer above) -- not a numbered PNR
+        // item, so this wins as a plain authentic screen instead, the same way a real
+        // "IGNORED" capture does, and clears every tracked item the same way.
+        plainTerminal = ['OK', 'SENT'];
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; foItem = null; itemCount = 0;
+        ttpJustFired = true;
       } else if (fqdAnswer) {
         const fakeScreen = FQD_FAKE_SCREENS[`${session.mode}-${session.number}-${index}`];
         fqdLines = fakeScreen || [buildFqdHeaderLine(fqdAnswer)];
@@ -3358,7 +3430,7 @@ function terminalForCurrentScreenRaw() {
     // that continuation can be built on top of it, and the marker's effect is correctly
     // deferred to the *following* screen via the previous-based reset above.
     if ((screen.clear || screen.end) && !screen.output.length) {
-      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; itemCount = 0; plainTerminal = null;
+      header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; foItem = null; itemCount = 0; plainTerminal = null;
     }
     if (screen.output.length) {
       const hasOwnHeader = screen.output.some(line => /^RP\//.test(line.trim()));
@@ -3378,7 +3450,7 @@ function terminalForCurrentScreenRaw() {
           // extractPnrCapture, same as FV/FM) is already part of capture.segmentLines above,
           // so any still-tracked synthesized fpItem is now superseded -- clear it, or it
           // would double up as an extra, stale line below.
-          fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null;
+          fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; foItem = null;
           itemCount = capture.itemCount;
           plainTerminal = null;
         } else {
@@ -3424,9 +3496,9 @@ function terminalForCurrentScreenRaw() {
         // sign-in, etc.) already reflects everything at this point -- it wins outright,
         // and synthesized state starts fresh after it.
         plainTerminal = screen.output;
-        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; itemCount = 0;
+        header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = []; remarkLines = []; osLines = []; fpItem = null; fvItem = null; fmItem = null; feItem = null; ftItem = null; foItem = null; itemCount = 0;
       }
-    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || fpItem || fvItem || fmItem || feItem || ftItem || rfLine || noticeLine || (fqdLines && fqdLines.length) || (fqnLines && fqnLines.length)) {
+    } else if (header || segmentLines.length || nameLines.length || apLines.length || tkLines.length || addressLines.length || remarkLines.length || osLines.length || fpItem || fvItem || fmItem || feItem || ftItem || foItem || rfLine || noticeLine || (fqdLines && fqdLines.length) || (fqnLines && fqnLines.length)) {
       // No real output this step, but a synthesized display (from a received-from element,
       // names/contacts/ticketing, a previously captured header/segment, or a fare-display
       // echo) is already under way -- that takes over, matching the original behavior for
@@ -3465,7 +3537,8 @@ function terminalForCurrentScreenRaw() {
   const fmPart = fmItem ? [`  ${fmItem.number} FM ${fmItem.detail}`] : [];
   const fePart = feItem ? [`  ${feItem.number} FE ${feItem.detail}`] : [];
   const ftPart = ftItem ? [`  ${ftItem.number} FT ${ftItem.detail}`] : [];
-  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines, ...fpPart, ...fvPart, ...fmPart, ...fePart, ...ftPart]
+  const foPart = foItem ? [`  ${foItem.number} FO ${foItem.detail}`] : [];
+  const trailingItems = [...apLines, ...tkLines, ...addressLines, ...remarkLines, ...osLines, ...fpPart, ...fvPart, ...fmPart, ...fePart, ...ftPart, ...foPart]
     .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
   if (header || segmentLines.length || noticeLine) return [header || 'RP/FRALH0999/', ...rfPart, ...noticePart, ...nameLines, ...segmentLines, ...trailingItems];
   const fqdPart = fqdLines || fqnLines || [];
