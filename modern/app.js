@@ -2249,18 +2249,31 @@ function buildFoDisplay(command, itemNumber) {
   if (!parsed) return null;
   return { number: itemNumber, detail: parsed.detail };
 }
-// A bare "TTP" (no "/BP", "/P<n>", "/S<n>-<n>" qualifier) issues the ticket and, per the
-// lesson's own wording, "ends the transaction automatically" -- unlike every other fare
-// element above, this isn't a numbered PNR item at all, so it's handled separately rather
-// than through buildXxDisplay/xxItem. There IS real captured precedent for exactly this,
-// later in this same lesson (a second bare "TTP", after the PNR is rebuilt and re-ticketed):
-// the very next screen's real output is the two lines "OK" / "SENT", matching the lesson's own
-// description ("displays the message OK"). That is the convention synthesized here. The
-// qualified forms ("TTP/BP", "TTP/S4-6") already have their own real "OK"/"SENT" captures
-// elsewhere and are left untouched -- this only matches the bare keyword.
+// A bare "TTP" issues the ticket and, per the lesson's own wording, "ends the transaction
+// automatically" -- unlike every other fare element above, this isn't a numbered PNR item at
+// all, so it's handled separately rather than through buildXxDisplay/xxItem. There IS real
+// captured precedent for exactly this, later in this same lesson (a second bare "TTP", after
+// the PNR is rebuilt and re-ticketed): the very next screen's real output is the two lines
+// "OK" / "SENT", matching the lesson's own description ("displays the message OK"). That is
+// the convention synthesized here.
+//
+// "TTP/P2,3,4" (and its alternate spelling "TTP/P2-4") gets the exact same treatment as one
+// specific, narrow exception, NOT via a general "any qualified TTP" rule: most of this
+// lesson's many other qualified forms ("TTP/BP", "TTP/S4-6", "TTP/P1,3"...) already have their
+// own real "OK"/"SENT" capture at their very next screen, confirming that real terminals do
+// show exactly that -- but a handful of others (classroom-26 part C's "TTP/P2-3"/"TTP/P2,3"
+// and "TTP/RT") have no real capture AND their lesson text frames them as a hypothetical
+// syntax-recall question ("Assume a PNR has 4 name elements. What entry would be used...")
+// rather than an instruction to actually perform against the PNR this lesson has been
+// building ("Input this entry now") -- synthesizing a transaction-ending confirmation there
+// would wipe that PNR's still-relevant FP/FV/FM items for no textual justification. Only
+// "TTP/P2,3,4"/"TTP/P2-4" is both gap AND phrased as a real "input this now" action (it
+// directly follows the lesson's own explanation that TTP "ends the transaction automatically
+// and displays the message OK"), so only that one is matched here.
 function canonicalTtpAnswer(answers) {
   for (const answer of answers) {
-    if (answer && answer.trim().toUpperCase() === 'TTP') return answer;
+    const normalized = answer && answer.trim().toUpperCase();
+    if (normalized === 'TTP' || normalized === 'TTP/P2,3,4' || normalized === 'TTP/P2-4') return answer;
   }
   return null;
 }
@@ -3457,14 +3470,39 @@ function terminalForCurrentScreenRaw() {
           // Too rich to redistribute (e.g. a bare, unnumbered re-echo of the same PNR that
           // happens to repeat its header) -- shown as captured. Unlike name/segment/AP/TK,
           // which this bare echo always repeats for real, the original .DAT convention never
-          // re-echoes a remark (or an OS item) here, so any already-entered remark(s)/OS
-          // item(s) would otherwise vanish from every later screen that re-shows this same PNR
-          // this way. Keeping remarkLines and osLines (and itemCount, so a later item keeps
+          // re-echoes a remark, an OS item, a received-from line, or a fare element here, so
+          // any already-entered one of these would otherwise vanish from every later screen
+          // that re-shows this same PNR this way (seen in lesson 26's own flow: a bare
+          // re-echo of the HASS PNR, captured right after storing FP/FV/FM and again right
+          // after the received-from entry, silently dropping both). Keeping remarkLines,
+          // osLines and the fare-element items (and itemCount, so a later item keeps
           // numbering from where these left off) and appending them, in their real PNR order,
-          // after the captured lines shows this exactly as a real terminal would: the echoed
-          // PNR, with its remarks and OS items still in place at the end.
-          plainTerminal = screen.output.filter(line => !isBareOsStub(line)).concat([...remarkLines, ...osLines].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0)));
-          header = null; rfLine = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = [];
+          // after the captured lines, and re-inserting rfLine right after the header (its
+          // usual position -- see the canonical-order comment below), shows this exactly as a
+          // real terminal would: the echoed PNR, with everything already stored still in
+          // place.
+          // Some lessons' bare re-echo already includes its own real FP/FV/FM/.../FO line
+          // (e.g. agency-26/27/28: the echoed text itself was captured AFTER the fare entry,
+          // unlike classroom-26's HASS echo above, captured from BEFORE it) -- appending the
+          // synthesized version on top of that would double it up, so this only adds one when
+          // the bare echo doesn't already show that code for real, same hasRealFareLine guard
+          // used for the main branch above.
+          const hasRealFareLineInEcho = code => screen.output.some(line => new RegExp(`\\d\\s+${code}\\b`).test(line));
+          const fpPart = fpItem && !hasRealFareLineInEcho('FP') ? [`  ${fpItem.number} FP ${fpItem.detail}`] : [];
+          const fvPart = fvItem && !hasRealFareLineInEcho('FV') ? [`  ${fvItem.number} FV ${fvItem.detail}`] : [];
+          const fmPart = fmItem && !hasRealFareLineInEcho('FM') ? [`  ${fmItem.number} FM ${fmItem.detail}`] : [];
+          const fePart = feItem && !hasRealFareLineInEcho('FE') ? [`  ${feItem.number} FE ${feItem.detail}`] : [];
+          const ftPart = ftItem && !hasRealFareLineInEcho('FT') ? [`  ${ftItem.number} FT ${ftItem.detail}`] : [];
+          const foPart = foItem && !hasRealFareLineInEcho('FO') ? [`  ${foItem.number} FO ${foItem.detail}`] : [];
+          const headerIndex = screen.output.findIndex(line => /^RP\//.test(line.trim()));
+          const hasOwnRfLine = screen.output.some(line => /^RF\b/.test(line.trim()));
+          const withRf = headerIndex === -1 || !rfLine || hasOwnRfLine ? screen.output : [
+            ...screen.output.slice(0, headerIndex + 1),
+            rfLine,
+            ...screen.output.slice(headerIndex + 1),
+          ];
+          plainTerminal = withRf.filter(line => !isBareOsStub(line)).concat([...remarkLines, ...osLines, ...fpPart, ...fvPart, ...fmPart, ...fePart, ...ftPart, ...foPart].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0)));
+          header = null; noticeLine = null; nameLines = []; apLines = []; tkLines = []; addressLines = []; segmentLines = [];
         }
       } else if (screen.hasSegmentDetail) {
         // A bare, unnumbered fragment. If every one of its lines already matches an item
