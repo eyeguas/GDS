@@ -854,6 +854,18 @@ const SCREEN_OUTPUT_FIXES = {
   'classroom-27-B-15': seatMapScreen('  SM AF 1810 / 31JAN CDGLHR YBMQ    321'), // response to part B id14's "SMAF1810/Y/31JANCDGLHR"
   'classroom-27-C-4': seatMapScreen('  SM AF 2290 / 05SEP ORYMAD YBMQ    320'), // response to part C id3's bare "SM9"
   'classroom-27-C-5': seatMapScreen('  SM IB 4206 / 27JUN BCNAMS YBMQ    320'), // response to part C id4's "SMIB4206/Y/27JUNBCNAMS"
+  // Same lesson again, same underlying gap, now for its final topic, BP^ (issue boarding
+  // pass): every BP^ answer below is likewise followed by a screen with no response at all.
+  // Unlike ST^ and SM^ above, no screen anywhere in the whole corpus ever captures a real BP^
+  // response to copy, so the synthesized response mirrors the same short, two-line shape
+  // already used for ST^'s "Seat Requested" acknowledgement above, rather than inventing gate,
+  // boarding-time or seat specifics no real capture ever supplied. The last of the four
+  // (part C id6) is the lesson's very last BP^ question; its response lands on part C id7,
+  // the lesson's closing screen, alongside that screen's own "you've reached the end" text.
+  'classroom-27-B-16': ['Boarding Pass Issued', 'BP ISSUED,P1'], // response to part B id15's bare "BP"
+  'classroom-27-B-17': ['Boarding Pass Issued', 'BP ISSUED/S5,7'], // response to part B id16's "BP/S5,7"
+  'classroom-27-C-0': ['Boarding Pass Issued', 'BP ISSUED/P5'], // response to part B id17's "BP/P5"
+  'classroom-27-C-7': ['Boarding Pass Issued', 'BP ISSUED/P3/S5'], // response to part C id6's "BP/P3/S5"
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
