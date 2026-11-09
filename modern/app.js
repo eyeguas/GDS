@@ -1090,12 +1090,25 @@ const TEXT_FIXES = {
   'agency-13--14': [
     ['as a general remark.', 'as a general remark, as follows:\n\n                RMCLIENT WILL ARRANGE CAR RENTAL LATER\n\nInput this entry.'],
   ],
-  // Agency lesson 26, screen id 11: the original text tells the student to "Press <F7> to
-  // view a sample ticket" before retrieving the next PNR -- F7 is a DOS-terminal shortcut
-  // this web app has no equivalent for (no sample-ticket viewer exists here), so the
-  // instruction is dead and confusing rather than actionable. Checked across the whole
-  // corpus: this is the only screen that mentions it. Dropped, with the remaining
-  // instruction recapitalized into its own complete sentence.
+  // Agency lesson 26 tells the student to press the <F7> key to view a sample ticket, twice,
+  // in two different screens with different wording -- F7 is a DOS-terminal shortcut this
+  // web app has no equivalent for (no sample-ticket viewer exists here), so both instances are
+  // dead and confusing rather than actionable. (A narrower search after the first fix below
+  // missed this second one, since its wording -- "press the\n<F7> key" -- doesn't match the
+  // phrase "press <F7>" the first fix was keyed to; re-checked properly this time with a
+  // corpus-wide grep for the bare substring "F7", confirming these two are the only real
+  // instructional mentions anywhere -- the handful of other "F7" hits elsewhere in the corpus
+  // are unrelated: a PNR locator that happens to contain "F7" (agency 13), an availability
+  // display's seat-count column (agency 5), a Hertz car-rental entry code (classroom 33 part
+  // B), and flight numbers (classroom 4 part B).
+  // Screen id 7: dropped, keeping the sentence that precedes it and recapitalizing the
+  // instruction that follows into its own complete sentence.
+  'agency-26--7': [
+    ['and ends the transaction automatically. To view a sample ticket, press the', 'and ends the transaction automatically.'],
+    ['<F7> key. Then retrieve the PNR for passenger Sanchez.', 'Retrieve the PNR for passenger Sanchez.'],
+  ],
+  // Screen id 11: dropped, with the remaining instruction recapitalized into its own
+  // complete sentence.
   'agency-26--11': [
     ['Press <F7> to view a sample ticket. Then retrieve the PNR for the record', 'Retrieve the PNR for the record'],
   ],
