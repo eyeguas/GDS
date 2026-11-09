@@ -746,6 +746,29 @@ async function loadContents() {
 // exactly the format this same lesson already uses for its other worked examples, so the
 // engine's own PNR synthesis (extractPnrCapture) renders it identically to a real capture.
 // Keyed the same way as ANSWER_FIXES/TEXT_FIXES.
+// A generic seat-map grid body, reused below for every synthesized SM^ (display seat map)
+// response in classroom lesson 27 -- nothing in these questions ever checks a specific seat
+// letter from the grid, so what matters is that it reads, visually, like an authentic GDS
+// seat map, the same way the one real capture this lesson already has (part B, screen id7,
+// for AF1441) does. Only the header line (carrier, flight, date, route, aircraft) changes
+// per screen, to match what that screen's own SM^ command actually asked for.
+const SEAT_MAP_BODY = [
+  '       C             M',
+  '       0       1            2  ',
+  '       1234 58901 2456 78 9 0 1',
+  '  F    .+++ ...+. +++/ /. / / /',
+  '  E    ...+ ..... ..+/ /. / / /',
+  '  D    ..++ ..... +++/ /. / / /',
+  '    L                           KL',
+  '  C    .+++ ...+. +++/ /. / / /',
+  '  B    ..++ ..... .++/ /. / / /',
+  '  A    .+++ ...+. +++/ /. / / /',
+  '       1234 58901 2456 78 9 0 1',
+  '       0       1            2  ',
+];
+function seatMapScreen(header) {
+  return [header, ...SEAT_MAP_BODY];
+}
 const SCREEN_OUTPUT_FIXES = {
   // Classroom lesson 16, screen id3 (paso 4): the previous screen (id2) has the student
   // type RT/COLBRIDGE as the answer to "What entry would be used to retrieve the PNR for
@@ -813,6 +836,24 @@ const SCREEN_OUTPUT_FIXES = {
   'classroom-27-C-2': ['Seat Requested', 'SSR NSSA REQUESTED/AISLE,P1'], // response to part C id1's "ST/A"
   'classroom-27-C-3': ['Seat Requested', 'SSR NSSA REQUESTED/34C,P1/S6'], // response to part C id2's "ST/34C/S6"
   'classroom-27-C-6': ['Seat Requested', 'SSR NSSA REQUESTED/WINDOW-UNACCOMPANIED MINOR,P1'], // response to part C id5's "ST/WU"
+  // Same lesson, same underlying gap, but for its SM^ (display seat map) questions instead of
+  // ST^: every SM^ answer below is likewise followed by a screen with no response at all, the
+  // file moving straight on to its next, unrelated question -- exactly the kind of mismatch
+  // reported for part B's screen id5 (paso 23, which follows id4's bare "SM8"), compared
+  // against agency lesson 27's own SM^ questions, which always show their seat-map grid for
+  // real (e.g. paso 13/agency-27-11, "SM IB3606//22MARMADFCO 757/CY"). Fixed the same way,
+  // reusing the single shared SEAT_MAP_BODY grid above (the exact seat pattern is decorative
+  // and never checked) under a header naming the carrier/flight/date/route/aircraft the
+  // question actually asked about. "SM8" and "SM9" (part B id4, part C id3) don't name a real
+  // flight at all -- like the Colbridge PNR above, a plausible one is invented for each, with
+  // its own distinct carrier/flight/date/route so it reads as a real display rather than a
+  // copy of the other invented one.
+  'classroom-27-B-5': seatMapScreen('  SM IB 3542 / 14AUG MADLIS YBMQ    319'), // response to part B id4's bare "SM8"
+  'classroom-27-B-13': seatMapScreen('  SM LH 4401 / 23JUL FRACDG FJCY    320'), // response to part B id12's "SMLH4401/F/23JULFRACDG"
+  'classroom-27-B-14': seatMapScreen('  SM IB 4222 / 23APR BCNBRU CYBM    321'), // response to part B id13's "SMIB4222/C/23APRBCNBRU"
+  'classroom-27-B-15': seatMapScreen('  SM AF 1810 / 31JAN CDGLHR YBMQ    321'), // response to part B id14's "SMAF1810/Y/31JANCDGLHR"
+  'classroom-27-C-4': seatMapScreen('  SM AF 2290 / 05SEP ORYMAD YBMQ    320'), // response to part C id3's bare "SM9"
+  'classroom-27-C-5': seatMapScreen('  SM IB 4206 / 27JUN BCNAMS YBMQ    320'), // response to part C id4's "SMIB4206/Y/27JUNBCNAMS"
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
