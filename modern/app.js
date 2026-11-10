@@ -866,6 +866,76 @@ const SCREEN_OUTPUT_FIXES = {
   'classroom-27-B-17': ['Boarding Pass Issued', 'BP ISSUED/S5,7'], // response to part B id16's "BP/S5,7"
   'classroom-27-C-0': ['Boarding Pass Issued', 'BP ISSUED/P5'], // response to part B id17's "BP/P5"
   'classroom-27-C-7': ['Boarding Pass Issued', 'BP ISSUED/P3/S5'], // response to part C id6's "BP/P3/S5"
+  // Classroom lesson 28 (Queues): every queue-management command below (QC^, QS^, QF^, QD^,
+  // QE^, OP^) is a real GDS entry, but most of them are taught as standalone syntax
+  // questions -- "what entry would be used to..." -- with no PNR or queue actually shown on
+  // screen for the student to act on, so the original .DAT never captured what the system
+  // would show in response (unlike QT^/QTQ^/QC2^/QS2^ earlier in this same lesson, which DO
+  // have real captures -- those are untouched). Rather than leave the terminal blank, each
+  // response here is grounded in two facts this lesson already establishes as real: the
+  // captured "IGNORED - OFF Q" response to QI^ at part B id4 (itself the response to id3's
+  // QI^), and the lesson's own explanatory text at paso 22 ("whenever an agent ends, removes,
+  // or ignores a record, the next PNR on the queue is displayed automatically, unless there
+  // are no more PNRs on the queue"). Every one of these commands (ending a transaction,
+  // delaying a PNR, requeuing it, placing it on another queue) is, by that same rule, a
+  // queue-advancing action -- and since none of these isolated teaching scenarios has an
+  // actual next PNR to advance to, "no more PNRs on the queue" is the honest answer every
+  // time, so each response reuses that exact "- OFF Q" ending, with only the leading verb
+  // swapped to match the real action taken (matching "IGNORED" for QI^) and, where the
+  // command itself names a queue or office, echoing that exact parameter back (nothing
+  // invented beyond what the student's own entry already specified). QT^/QTQ^ are not
+  // queue-advancing actions at all (they only display a summary), so their two repeat
+  // occurrences in the review section (part C) instead reuse this lesson's own real QT^/QTQ^
+  // captures verbatim (paso 8 and paso 11 of the base file) -- the same recall, the same
+  // real answer, not fabricated.
+  'classroom-28--12': ['QUEUE....FRALH2330.........Q/TTL.', 'Q94.MSG-CP...............    0.'], // response to base id11's "QC94" -- the "0" is the real count already shown for queue 94 in this lesson's own QTQ^ capture (paso 11)
+  'classroom-28--14': [
+    'QUEUE....MADIB1020.........Q/TTL.',
+    'Q 7.SKEDCHG.......................',
+    '...................C 0.D1      2.',
+    '...................C 0.D2      1.',
+  ], // response to base id13's "QC/MADIB1020/7" -- office code reused verbatim from the student's own entry, in the exact header format this lesson's own QC2^ capture (paso 14) already uses; the category/date-range counts are invented, kept small and distinct from that same QC2^ example's 4/2/1/2
+  'classroom-28--15': ['NO PNRS ON QUEUE - OFF Q'], // response to base id14's "QS3"
+  'classroom-28--16': ['NO PNRS ON QUEUE - OFF Q'], // response to base id15's "QS96" -- queue 96 is the real "0" count already shown in this lesson's own QTQ^ capture (paso 11)
+  'classroom-28--17': ['NO PNRS ON QUEUE - OFF Q'], // response to base id16's "QS/NCEAF0909/7"
+  'classroom-28-B-5': ['END OF TRANSACTION COMPLETE - OFF Q'], // response to part B id4's "QF" (end transaction/exit queue 7)
+  'classroom-28-B-6': ['DELAYED - OFF Q'], // response to part B id5's "QD1800"
+  'classroom-28-B-7': ['DELAYED - OFF Q'], // response to part B id6's "QD24JUL"
+  'classroom-28-B-8': ['DELAYED - OFF Q'], // response to part B id7's "QD2000"
+  'classroom-28-B-9': ['PLACED ON Q27 - OFF Q'], // response to part B id8's "QE27"
+  'classroom-28-B-10': ['PLACED ON Q81 - OFF Q'], // response to part B id9's "QE81"
+  'classroom-28-B-11': ['PLACED ON OPTION Q - OFF Q'], // response to part B id10's "OP30NOV/COLLECT DEPOSIT"
+  'classroom-28-B-12': ['PLACED ON OPTION Q/MADIB2440 - OFF Q'], // response to part B id11's "OPMADIB2440/31AUG/SEE REMARKS"
+  'classroom-28-C-0': ['PLACED ON OPTION Q/FRALH0365 - OFF Q'], // response to part B's last screen (id12), "OPFRALH0365/14MAR/ISSUE INVOICE"
+  'classroom-28-C-1': [
+    'QUEUE....FRALH0990......Q/TTL.',
+    'Q 0.GENERAL...................',
+    '.................C  0....  20.',
+    'Q 1.CONFO  ...................',
+    '....AIR       ...C  1.D1    1.',
+    '.................C  1.D2    1.',
+    'Q 2.KL     ...................',
+    '....          ...C  0.D1    3.',
+  ], // response to part C id0's "QT" -- this lesson's own real QT^ capture (base id7, paso 8), reused verbatim: same recall, same real answer
+  'classroom-28-C-2': ['NO PNRS ON QUEUE - OFF Q'], // response to part C id1's "QS4"
+  'classroom-28-C-3': ['DELAYED - OFF Q'], // response to part C id2's "QD28OCT"
+  'classroom-28-C-4': ['END OF TRANSACTION COMPLETE - OFF Q'], // response to part C id3's "QF"
+  'classroom-28-C-5': ['REQUEUED - OFF Q'], // response to part C id4's bare "QD" (move displayed PNR to back of queue)
+  'classroom-28-C-6': ['PLACED ON Q87 - OFF Q'], // response to part C id5's "QE87"
+  'classroom-28-C-7': [
+    'QUEUE....FRALH0999.......Q/TTL.',
+    '....DLY/DAT..............    7.',
+    '....DLY/TIM..............    0.',
+    'Q94.MSG-CP...............    0.',
+    'Q96.MSG-PDR..............    0.',
+    'Q97.MESSAGE..............    2.',
+    'Q 0.GENERAL..............    5.',
+    'Q 1.CONFO  ..............    3.',
+    'Q 2.KL     ..............    4.',
+    'Q 3.OPTION ..............    0.',
+    'Q 4.RPCHNG ..............    1.',
+  ], // response to part C id6's "QTQ" -- this lesson's own real QTQ^ capture (base id10, paso 11), reused verbatim
+  'classroom-28-C-8': ['PLACED ON OPTION Q/BRU1A0791 - OFF Q'], // response to part C id7's "OPBRU1A0791/18JUN/SEE REMARKS" -- lands on the lesson's closing screen, alongside its own "you've reached the end" text
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -1877,15 +1947,6 @@ const SCREEN_CLEAR_FIXES = new Set([
   // the end of the lesson. These questions have no real system effect of their own, so there is
   // nothing to show here.
   'classroom-17-B-9',
-  // Classroom lesson 28, part B, screen id 5 (paso 25): "What entry would be used to delay a
-  // PNR until 1800?" -- a pure QD^ syntax question with no PNR or queue context of its own.
-  // The previous screen's own real output ("IGNORED - OFF Q", id 4's captured response to the
-  // QF^ entered at paso 24) is the correct response to THAT command and belongs there, but
-  // nothing else clears it before this and every later screen in the lesson (ids 6-12 here,
-  // and all of LSN28C) -- none of which has any real output of its own either, so "IGNORED -
-  // OFF Q" would otherwise keep showing, misleadingly attached to a dozen unrelated QD^/QE^/OP^
-  // syntax questions, all the way to the end of the lesson.
-  'classroom-28-B-5',
 ]);
 function applyClearFix(mode, number, part, screen) {
   if (!SCREEN_CLEAR_FIXES.has(`${mode}-${number}-${part}-${screen.id}`)) return screen;
