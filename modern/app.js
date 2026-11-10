@@ -1165,6 +1165,45 @@ const TEXT_FIXES = {
   'agency-26--11': [
     ['Press <F7> to view a sample ticket. Then retrieve the PNR for the record', 'Retrieve the PNR for the record'],
   ],
+  // Classroom lesson 28 (Queues), screens id2/id4/id5 (pasos 3/5/6): each is a small
+  // two-column reference table in the original DOS screen (queue number/name, category
+  // number/name, date-range number/name), but the source lines carry no blank line between
+  // rows, so classifyLine's generic 'prose' fallback (the only kind digit-led or
+  // "word number: text" lines like these ever matched) merges every row into one run-on
+  // paragraph -- the queue table in particular reads as a flat wall of "0 General use 1
+  // Confirmations 2 Waitlist confirmations..." with no visual separation at all, rather
+  // than the two-column table the original screen actually shows. Reformatting each row
+  // here as a "CODE  description" pair (already recognized by classifyLine's defMatch and
+  // rendered as a proper <dl> reference list, same as this lesson's own QI/QF/QD list at
+  // paso 23) fixes this without touching the shared parser. The prefix letter for each
+  // table isn't invented: it's the exact prefix the lesson's own later screens already use
+  // for these same numbers -- paso 8's real captured queue-total display shows "Q 0.", "Q
+  // 1.", "Q 2." for queue numbers and "C  1.D1" for category 1/date range 1, and paso 8's
+  // own explanatory text says outright "The C^ in the middle of each line indicates the
+  // category number... The D^ indicates the date range" -- so Q/C/D here just previews the
+  // same notation this lesson teaches a few screens later, rather than introducing anything
+  // new.
+  'classroom-28--2': [
+    ['    0  General use                        1  Confirmations', 'Q0  General use                    Q1  Confirmations'],
+    ['    2  Waitlist confirmations             3  Optional use', 'Q2  Waitlist confirmations         Q3  Optional use'],
+    ['    4  Responsible office change          7  Schedule changes', 'Q4  Responsible office change      Q7  Schedule changes'],
+    ['    8  Ticketing arrangements            12  Expired ticket time limits', 'Q8  Ticketing arrangements         Q12  Expired ticket time limits'],
+    ['   23  Request for reply                 80  Prepaid ticket advices', 'Q23  Request for reply             Q80  Prepaid ticket advices'],
+    ['   87  Group review                      97  Message queue', 'Q87  Group review                  Q97  Message queue'],
+  ],
+  'classroom-28--4': [
+    ['Category 1: Air segments', 'C1  Air segments'],
+    ['Category 2: Hotel segments', 'C2  Hotel segments'],
+    ['Category 3: Car segments', 'C3  Car segments'],
+    ['Category 4: Tour segments', 'C4  Tour segments'],
+    ['Category 6: SSRs', 'C6  SSRs'],
+  ],
+  'classroom-28--5': [
+    ['Date range 1              0 - 2 days', 'D1  0 - 2 days'],
+    ['Date range 2              3 - 6 days', 'D2  3 - 6 days'],
+    ['Date range 3              7 - 10 days', 'D3  7 - 10 days'],
+    ['Date range 4              11 days or more', 'D4  11 days or more'],
+  ],
 };
 function applyTextFix(mode, number, part, screen) {
   const fixes = TEXT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -1838,6 +1877,15 @@ const SCREEN_CLEAR_FIXES = new Set([
   // the end of the lesson. These questions have no real system effect of their own, so there is
   // nothing to show here.
   'classroom-17-B-9',
+  // Classroom lesson 28, part B, screen id 5 (paso 25): "What entry would be used to delay a
+  // PNR until 1800?" -- a pure QD^ syntax question with no PNR or queue context of its own.
+  // The previous screen's own real output ("IGNORED - OFF Q", id 4's captured response to the
+  // QF^ entered at paso 24) is the correct response to THAT command and belongs there, but
+  // nothing else clears it before this and every later screen in the lesson (ids 6-12 here,
+  // and all of LSN28C) -- none of which has any real output of its own either, so "IGNORED -
+  // OFF Q" would otherwise keep showing, misleadingly attached to a dozen unrelated QD^/QE^/OP^
+  // syntax questions, all the way to the end of the lesson.
+  'classroom-28-B-5',
 ]);
 function applyClearFix(mode, number, part, screen) {
   if (!SCREEN_CLEAR_FIXES.has(`${mode}-${number}-${part}-${screen.id}`)) return screen;
