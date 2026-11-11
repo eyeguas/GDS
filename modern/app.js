@@ -1135,6 +1135,18 @@ const ANSWER_FIXES = {
     'OSKL 1CHD AGE 9/P3', 'OSKL 1CHD 9 YRS/P3', 'OSKL 1CHD 9YRS/P3',
     'OS KL 1CHD AGED 9/P3', 'OS KL 1CHD AGE 9/P3', 'OS KL 1CHD 9 YRS/P3', 'OS KL 1CHD 9YRS/P3',
   ],
+  // Agency lesson 25, screen id 2 ("Price the itinerary without creating a TST."): the
+  // recorded answer "FXP/X0" uses a modifier that appears nowhere else in the entire
+  // corpus and is never taught in any Classroom lesson -- a one-off data-entry invention,
+  // not a real transaction code. Classroom lesson 24 (Itinerary Pricing) teaches that the
+  // bare "FXP" entry prices the itinerary and that "a TST is attached to the PNR when the
+  // agent ends the transaction" -- i.e. a TST is only ever created by a later ET, never by
+  // FXP itself. Agency lesson 24's own earlier, identically-worded step ("Price the
+  // itinerary.", id 2) uses exactly bare "FXP" and gets this same kind of single-fare-line
+  // response. This screen's own captured response (id 3: a single "01 HA21 4046" fare
+  // line, the same shape as a single-option FXP price display) confirms bare "FXP" is what
+  // was actually run to produce it -- "/X0" was never part of the real entry.
+  'agency-25--2': ['FXP'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
