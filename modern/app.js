@@ -964,6 +964,78 @@ const SCREEN_OUTPUT_FIXES = {
     ' 3.     AM NIKE,SUITE 12,48 REGENT STREET,LONDON W1B 5RA',
     ' 4.  S  FP CASH',
   ], // response to id3's "PDN/NIKE"
+  // Same lesson, further in: ids 10, 11, 12, 15 each ask the student to display a profile
+  // or name list, and id 15 asks a follow-up syntax question -- but none of their answers is
+  // ever followed by a response screen; the next id again just moves straight on to its own
+  // new question, exactly the same gap pattern as ids 2-3 above.
+  // - id10 ("PD2"/"PDN/NET PRESS", selecting item 2 from id9's own real captured
+  //   "SIMILAR COMPANY NAME LIST" of NET-prefixed companies) -- the minimal 3-line profile
+  //   format (no FP line) follows this corpus's own real precedent for selecting an item
+  //   from such a list (AM29.DAT's POLYMETRICS, selected the same way from a POL-prefixed
+  //   list).
+  'classroom-29--10': [
+    ' COMPANY PROFILE :   NET PRESS',
+    ' RECORD LOCATOR  :   ANP3RS',
+    ' 1.   AP PAR 1 42 55 61 20-B',
+    ' 2.   AB NET PRESS,14 RUE DE RIVOLI,75004 PARIS',
+    ' 3.   AM NET PRESS,22 RUE DU LOUVRE,75001 PARIS',
+  ], // response to id9's "PD2"/"PDN/NET PRESS"
+  // - id11 ("PDN/WARNER-GARCIA/L" or "PDN/WARNER-GARCIA") and id12 ("PDN/ZARA-FAIVRE/J" or
+  //   "PDN/ZARA-FAIVRE"): both follow the traveller-profile format this same lesson's own
+  //   real captured response (id12's BERTRAND/MICROSOFT profile, shown at id13) establishes.
+  //   Neither Warner's nor Zara's traveller is named anywhere else in the corpus, so each
+  //   gets a distinct, invented (never-reused) name, phone and address, kept deliberately
+  //   generic rather than either company's real-world address.
+  'classroom-29--11': [
+    ' TRAVELLER PROFILE  :  GARCIA/LUIS MR',
+    ' ASSOCIATED COMPANY :  WARNER',
+    ' RECORD LOCATOR     :  AWG4RL',
+    ' 1.      NM1GARCIA/LUIS MR',
+    ' 2.      AP LON 0171 5567321-B',
+    ' 3.      AB WARNER,18 SOHO SQUARE,LONDON W1D 3QL',
+    ' 4.  S   FP CHEQUE',
+  ], // response to id10's "PDN/WARNER-GARCIA/L"
+  'classroom-29--12': [
+    ' TRAVELLER PROFILE  :  FAIVRE/JACQUES MR',
+    ' ASSOCIATED COMPANY :  ZARA',
+    ' RECORD LOCATOR     :  AZF7RA',
+    ' 1.      NM1FAIVRE/JACQUES MR',
+    ' 2.      AP MAD 91 5234876-B',
+    ' 3.      AB ZARA,AVENIDA DE LA INDUSTRIA 23,28108 MADRID',
+    ' 4.  S   FP CHEQUE',
+  ], // response to id11's "PDN/ZARA-FAIVRE/J"
+  // - id15 ("PDN/FUJITSU-ISH", a traveller NAME search within company FUJITSU, parallel to
+  //   id9's own real "SIMILAR COMPANY NAME LIST" convention above but for traveller names
+  //   instead of company names) gets the same list-style response, with invented names
+  //   plausibly starting with ISH.
+  'classroom-29--15': [
+    'INPUT:  PDN/FUJITSU-ISH',
+    ' ',
+    'SIMILAR NAME LIST:',
+    ' ',
+    '  1 ISHIDA',
+    '  2 ISHIKAWA',
+    '  3 ISHIMURA',
+  ], // response to id14's "PDN/FUJITSU-ISH"
+  // - id16's own question ("After displaying a selected section of a customer profile, what
+  //   entry will display the entire profile?", answer "PDT") is the one screen in this run
+  //   that is purely conceptual rather than continuing a concrete scenario of its own -- but
+  //   id15's own instructional text had just introduced "PDN/XEROX-HOLTZ/G,AIR^" as its worked
+  //   example of a selected-section display, so PDT's natural, grounded answer here is the
+  //   FULL profile for that same traveller (Holtz, G., at Xerox), rather than an unrelated
+  //   invented scenario. The AL (preferred-airline) line follows the exact format this
+  //   lesson's own real captured air-only selection (id16's response, GOOGLE-ORLANDO, shown
+  //   at id17) already establishes.
+  'classroom-29--16': [
+    ' TRAVELLER PROFILE  :  HOLTZ/GUNTHER MR',
+    ' ASSOCIATED COMPANY :  XEROX',
+    ' RECORD LOCATOR     :  AHX4TZ',
+    ' 1.      NM1HOLTZ/GUNTHER MR',
+    ' 2.      AP FRA 069 7721456-B',
+    ' AL   1-LH/C/EU, 2-LH/Y/US',
+    ' 3.      AB XEROX,KAISERSTRASSE 42,60329 FRANKFURT',
+    ' 4.  S   FP CHEQUE',
+  ], // response to id15's "PDT"
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
