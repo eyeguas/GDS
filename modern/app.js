@@ -936,6 +936,34 @@ const SCREEN_OUTPUT_FIXES = {
     'Q 4.RPCHNG ..............    1.',
   ], // response to part C id6's "QTQ" -- this lesson's own real QTQ^ capture (base id10, paso 11), reused verbatim
   'classroom-28-C-8': ['PLACED ON OPTION Q/BRU1A0791 - OFF Q'], // response to part C id7's "OPBRU1A0791/18JUN/SEE REMARKS" -- lands on the lesson's closing screen, alongside its own "you've reached the end" text
+  // Classroom lesson 29 (Central Profiles): ids 2 and 3 each ask the student to display a
+  // company profile ("PDN/FERRARI", then "PDN/NIKE") but neither answer is ever followed by
+  // a response screen -- the next id just moves straight on to its own new question (id3 asks
+  // about Nike without ever showing Ferrari's profile; id4 asks about Philips without ever
+  // showing Nike's). This lesson's own very next screen (id4's real captured response, shown
+  // at id5) establishes the exact convention a profile display follows here -- "COMPANY
+  // PROFILE : <name>" / "RECORD LOCATOR : <code>" plus numbered AP/AB/AM/FP lines -- so these
+  // two reuse that same structure and formatting. Ferrari's phone/address follow this
+  // corpus's own real Rome (AP ROM 06, "VIA <street>,<postcode> ROME") and Nike's its own real
+  // London (AP LON 0171, "<street>,LONDON <postcode>") conventions, each with distinct,
+  // invented (never-reused) numbers and addresses -- there is no real captured profile for
+  // either company anywhere else in the corpus to restore instead.
+  'classroom-29--3': [
+    ' COMPANY PROFILE  :   FERRARI',
+    ' RECORD LOCATOR   :   AFI5RF',
+    ' 1.     AP ROM 06 5523187-B',
+    ' 2.     AB FERRARI,VIA TORINO 58,00184 ROME',
+    ' 3.     AM FERRARI,VIA VENETO 12,00187 ROME',
+    ' 4.  S  FP CHEQUE',
+  ], // response to id2's "PDN/FERRARI"
+  'classroom-29--4': [
+    ' COMPANY PROFILE  :   NIKE',
+    ' RECORD LOCATOR   :   ANK2RN',
+    ' 1.     AP LON 0171 4493265-B',
+    ' 2.     AB NIKE,25 BAKER STREET,LONDON W1U 6TG',
+    ' 3.     AM NIKE,SUITE 12,48 REGENT STREET,LONDON W1B 5RA',
+    ' 4.  S  FP CASH',
+  ], // response to id3's "PDN/NIKE"
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
