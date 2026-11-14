@@ -1036,6 +1036,102 @@ const SCREEN_OUTPUT_FIXES = {
     ' 3.      AB XEROX,KAISERSTRASSE 42,60329 FRANKFURT',
     ' 4.  S   FP CHEQUE',
   ], // response to id15's "PDT"
+  // Classroom lesson 29, PART B (LSN29B.DAT): the whole back half of this lesson drills the
+  // PT^ (profile-transfer) syntax, and almost none of these review questions ever had a
+  // captured type:1 response in the original .DAT -- each one's answer is a PT/PTX entry
+  // naming specific line numbers that don't all exist on the small profile actually on
+  // screen, which is presumably why the original authors never bothered to capture a real
+  // response for them. The fix below treats each such entry literally: whichever of the
+  // named line numbers really exist on the most recently displayed profile are transferred
+  // (renumbered sequentially, dropping the S code exactly as the lesson's own real captures
+  // already do for an explicitly-numbered S line -- see id6's real "FP CASH" line above),
+  // and any out-of-range number is silently skipped, the same way a real GDS ignores a
+  // reference to a line that isn't there. None of these are ever ended with ET, so each
+  // carries a blank, not-yet-assigned record locator ("RP/FRALH####/") exactly like the
+  // lesson's own two real mid-transfer captures (ids 0/1 and 5/6 above) -- just a fresh,
+  // ascending four-digit suffix per attempt so no two screens in this run look like the same
+  // capture twice.
+  'classroom-29-B-3': [
+    'RP/FRALH2690/',
+    '  1 AB STRADIVARIUS,BP 247,FRANKFURT',
+    '  2 AM STRADIVARIUS,MANNHEIMSTRAS 54-56,FRANKFURT',
+  ], // response to id2's "PT4,5,9" -- lines 4 and 5 of the still-referenced id0 DIETRICH/
+  // STRADIVARIUS profile (line 9 doesn't exist on that 6-line profile, so it's skipped)
+  'classroom-29-B-4': [
+    'RP/FRALH2720/',
+    '  1.DIETRICH/GUNTER MR',
+    '  2 AP FRA 069 237 376-H',
+  ], // response to id3's "PT1,3,7" -- lines 1 and 3 of the same profile (line 7 doesn't exist)
+  'classroom-29-B-8': [
+    'RP/FRALH3010/',
+  ], // response to id7's "PT10-12"/"PT10,11,12" -- none of lines 10, 11 or 12 exist on the
+  // 4-line id5 AIRBNB profile that's still the most recently displayed one at this point, so
+  // the transfer opens a record with nothing in it, same shape as every other in-progress
+  // transfer here, just empty.
+  'classroom-29-B-9': [
+    'RP/FRALH3040/',
+    '  1 AP AMS 31 20 5553111-B',
+    '  2 AB AIRBNB,PO BOX 111,1004 AMSTERDAM',
+    '  3 AM AIRBNB,OUDEZIJDS VOORBURGWAL 201,1001 AMSTERDAM',
+    '  4 FP CASH',
+  ], // response to id8's "PT*" -- "transfer all lines...including those with the code S" (the
+  // lesson's own words at id7) -- so all 4 lines of the AIRBNB profile, S code included
+  'classroom-29-B-10': [
+    'RP/FRALH3070/',
+    '  1 AP AMS 31 20 5553111-B',
+    '  2 AB AIRBNB,PO BOX 111,1004 AMSTERDAM',
+    '  3 AM AIRBNB,OUDEZIJDS VOORBURGWAL 201,1001 AMSTERDAM',
+    '  4 FP CASH',
+  ], // response to id9's "PTX15" -- "all lines except line 15": there is no line 15 on the
+  // 4-line AIRBNB profile, so nothing is excluded and the result is the same full, S-included
+  // transfer as PT* above (a real GDS would transfer the same four lines either way)
+  'classroom-29-B-11': [
+    ' COMPANY PROFILE  :   LAMBORGHINI',
+    ' RECORD LOCATOR   :   ALB4RG',
+    ' 1.     AP BOL 051 6879432-B',
+    ' 2.     AB LAMBORGHINI,VIA MODENA 12,40019 SANT AGATA BOLOGNESE',
+    ' 3.     AM LAMBORGHINI,VIA EMILIA 45,40138 BOLOGNA',
+    ' 4.  S  FP CHEQUE',
+  ], // response to id10's "PDN/LAMBORGHINI" -- same letter-for-letter FERRARI/NIKE company-
+  // profile shape as the classroom-29--3/--4 fixes above, Bologna-area phone/address since
+  // Lamborghini is headquartered near Bologna, matching that same "real city, invented street"
+  // precedent instead of the company's actual real address
+  'classroom-29-B-12': [
+    ' TRAVELLER PROFILE  :  REINE/LAURENT MR',
+    ' ASSOCIATED COMPANY :  APPLEFR',
+    ' RECORD LOCATOR     :  AFR3RE',
+    ' 1.      NM1REINE/LAURENT MR',
+    ' 2.      AP PAR 01 44 78 2537-B',
+    ' 3.      AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
+    ' 4.      AM APPLEFR,12 RUE DU COLISEE,75008 PARIS',
+    ' 5.  S   FP CHEQUE',
+  ], // response to id11's "PDN/APPLEFR-REINE/L" -- same shape as the real BERTRAND/MICROSOFT
+  // capture (LSN29/id13 above), a Paris company profile for the traveller this exercise names
+  'classroom-29-B-13': [
+    'RP/FRALH3100/',
+    '  1 AP PAR 01 44 78 2537-B',
+    '  2 FP CHEQUE',
+  ], // response to id12's "PT2,5,9,13" -- lines 2 and 5 of the id11 REINE/APPLEFR profile just
+  // above (lines 9 and 13 don't exist on that 5-line profile, so they're skipped)
+  'classroom-29-B-14': [
+    'RP/FRALH3130/',
+    '  1.REINE/LAURENT MR',
+    '  2 AP PAR 01 44 78 2537-B',
+    '  3 AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
+    '  4 AM APPLEFR,12 RUE DU COLISEE,75008 PARIS',
+  ], // response to id13's bare "PT" -- all lines of that same profile except the S-coded one,
+  // same convention as the lesson's own real id0/id1 bare-PT capture above
+  'classroom-29-B-15': [
+    'INPUT:  PDN/RAK',
+    ' ',
+    'SIMILAR NAME LIST:',
+    ' ',
+    '  1 RAKUTEN',
+    '  2 RAK AIRWAYS',
+  ], // response to id14's "PDN/RAK" -- this lesson has no real precedent for a multi-COMPANY
+  // match list (its only real multi-match list, classroom-29--15 above, is for a traveller
+  // SURNAME within one company), so this reuses that same SIMILAR NAME LIST house format,
+  // just listing two plausible real-world companies whose own name starts with RAK instead
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
