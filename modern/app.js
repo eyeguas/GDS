@@ -1096,31 +1096,65 @@ const SCREEN_OUTPUT_FIXES = {
   // profile shape as the classroom-29--3/--4 fixes above, Bologna-area phone/address since
   // Lamborghini is headquartered near Bologna, matching that same "real city, invented street"
   // precedent instead of the company's actual real address
+  // The id12 traveller profile below (REINE/APPLEFR) is 13 lines long, unlike every other
+  // profile in this lesson -- deliberately, because id12's own question explicitly names
+  // lines 2, 5, 9 AND 13 ("What entry will transfer lines 2, 5, 9, and 13..."), and unlike
+  // the DIETRICH/AIRBNB profiles above (real captures this lesson is stuck with the length
+  // of), this one is already invented from scratch for this fix, so it can simply be built
+  // long enough for all four of the question's own numbers to point at a real line -- a
+  // multi-office company profile (Paris/Lyon/Marseille/Nice) is exactly the kind of profile
+  // that WOULD run to 13 lines for real, so no new field types are needed, just more AP/AB/AM
+  // repeats of the same kinds this lesson's own real captures already use more than once per
+  // profile (see the real BERTRAND/MICROSOFT and DIETRICH/STRADIVARIUS captures above, each
+  // with 2+ AP lines).
   'classroom-29-B-12': [
     ' TRAVELLER PROFILE  :  REINE/LAURENT MR',
     ' ASSOCIATED COMPANY :  APPLEFR',
     ' RECORD LOCATOR     :  AFR3RE',
     ' 1.      NM1REINE/LAURENT MR',
     ' 2.      AP PAR 01 44 78 2537-B',
-    ' 3.      AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
-    ' 4.      AM APPLEFR,12 RUE DU COLISEE,75008 PARIS',
-    ' 5.  S   FP CHEQUE',
-  ], // response to id11's "PDN/APPLEFR-REINE/L" -- same shape as the real BERTRAND/MICROSOFT
-  // capture (LSN29/id13 above), a Paris company profile for the traveller this exercise names
+    ' 3.      AP PAR 01 45 20 3698-H',
+    ' 4.      AP PAR 06 07 12 34 56-M',
+    ' 5.      AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
+    ' 6.      AM APPLEFR,12 RUE DU COLISEE,75008 PARIS',
+    ' 7.      AP PAR 01 44 78 2599-F',
+    ' 8.      AP LYO 04 72 11 22 33-B',
+    ' 9.      AP MAR 04 91 22 33 44-B',
+    ' 10.     AP NCE 04 93 11 22 33-B',
+    ' 11.     AB APPLEFR,22 RUE DE LA REPUBLIQUE,69002 LYON',
+    ' 12.     AM APPLEFR,8 PLACE BELLECOUR,69002 LYON',
+    ' 13. S   FP CHEQUE',
+  ], // response to id11's "PDN/APPLEFR-REINE/L" -- same field shapes as the real BERTRAND/
+  // MICROSOFT capture (LSN29/id13 above), just extended to a second office (Lyon) plus two
+  // more branch phone numbers (Marseille, Nice), for the traveller this exercise names
   'classroom-29-B-13': [
     'RP/FRALH3100/',
     '  1 AP PAR 01 44 78 2537-B',
-    '  2 FP CHEQUE',
-  ], // response to id12's "PT2,5,9,13" -- lines 2 and 5 of the id11 REINE/APPLEFR profile just
-  // above (lines 9 and 13 don't exist on that 5-line profile, so they're skipped)
+    '  2 AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
+    '  3 AP MAR 04 91 22 33 44-B',
+    '  4 FP CHEQUE',
+  ], // response to id12's "PT2,5,9,13" -- lines 2, 5, 9 and 13 of the id11 profile just above,
+  // renumbered 1-4 in order (line 13's S code is dropped since it was picked by its own
+  // explicit number, same convention as the real id5/id6 AIRBNB "PT1,2,4" capture above)
   'classroom-29-B-14': [
     'RP/FRALH3130/',
     '  1.REINE/LAURENT MR',
     '  2 AP PAR 01 44 78 2537-B',
-    '  3 AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
-    '  4 AM APPLEFR,12 RUE DU COLISEE,75008 PARIS',
-  ], // response to id13's bare "PT" -- all lines of that same profile except the S-coded one,
-  // same convention as the lesson's own real id0/id1 bare-PT capture above
+    '  3 AP PAR 01 45 20 3698-H',
+    '  4 AP PAR 06 07 12 34 56-M',
+    '  5 AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
+    '  6 AM APPLEFR,12 RUE DU COLISEE,75008 PARIS',
+    '  7 AP PAR 01 44 78 2599-F',
+    '  8 AP LYO 04 72 11 22 33-B',
+    '  9 AP MAR 04 91 22 33 44-B',
+    '  10 AP NCE 04 93 11 22 33-B',
+    '  11 AB APPLEFR,22 RUE DE LA REPUBLIQUE,69002 LYON',
+    '  12 AM APPLEFR,8 PLACE BELLECOUR,69002 LYON',
+  ], // response to id13's bare "PT" -- the lesson's own question at id13 is literally "what
+  // entry transfers all lines EXCEPT those with the code S", and "PT" (unchanged, this is id13's
+  // real original answer, not part of this fix) is exactly that by the definition this lesson
+  // itself teaches at id0/id1 above -- so this transfers all 12 non-S lines of the id11 profile,
+  // renumbered 1-12, leaving out only line 13 (the S-coded FP line)
   'classroom-29-B-15': [
     'INPUT:  PDN/RAK',
     ' ',
@@ -1132,6 +1166,27 @@ const SCREEN_OUTPUT_FIXES = {
   // match list (its only real multi-match list, classroom-29--15 above, is for a traveller
   // SURNAME within one company), so this reuses that same SIMILAR NAME LIST house format,
   // just listing two plausible real-world companies whose own name starts with RAK instead
+  'classroom-29-B-16': [
+    'RP/FRALH3160/',
+    '  1.REINE/LAURENT MR',
+    '  2 AP PAR 01 44 78 2537-B',
+    '  3 AP PAR 01 45 20 3698-H',
+    '  4 AP PAR 06 07 12 34 56-M',
+    '  5 AB APPLEFR,114 RUE DE RIVOLI,75001 PARIS',
+    '  6 AM APPLEFR,12 RUE DU COLISEE,75008 PARIS',
+    '  7 AP PAR 01 44 78 2599-F',
+    '  8 AP LYO 04 72 11 22 33-B',
+    '  9 AP MAR 04 91 22 33 44-B',
+    '  10 AP NCE 04 93 11 22 33-B',
+    '  11 AB APPLEFR,22 RUE DE LA REPUBLIQUE,69002 LYON',
+    '  12 AM APPLEFR,8 PLACE BELLECOUR,69002 LYON',
+    '  13 FP CHEQUE',
+  ], // response to id15's "PT*" -- this is the lesson's own closing screen, and id15's question
+  // ("...including those with the code S") is the PT* counterpart of id13's "except S" question
+  // two steps earlier, both against the same id11 REINE/APPLEFR profile (the RAK list at id14/
+  // id15 is a side lookup, not a new profile to transfer from) -- so, unlike id13's answer,
+  // this one includes line 13, giving all 13 lines instead of 12, which is exactly the "same
+  // question shape, different (larger) answer" pair this lesson is drawing between the two
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
