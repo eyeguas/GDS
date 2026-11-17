@@ -1387,17 +1387,21 @@ const ANSWER_FIXES = {
     'OS KL 1CHD AGED 9/P3', 'OS KL 1CHD AGE 9/P3', 'OS KL 1CHD 9 YRS/P3', 'OS KL 1CHD 9YRS/P3',
   ],
   // Agency lesson 25, screen id 2 ("Price the itinerary without creating a TST."): the
-  // recorded answer "FXP/X0" uses a modifier that appears nowhere else in the entire
-  // corpus and is never taught in any Classroom lesson -- a one-off data-entry invention,
-  // not a real transaction code. Classroom lesson 24 (Itinerary Pricing) teaches that the
-  // bare "FXP" entry prices the itinerary and that "a TST is attached to the PNR when the
-  // agent ends the transaction" -- i.e. a TST is only ever created by a later ET, never by
-  // FXP itself. Agency lesson 24's own earlier, identically-worded step ("Price the
-  // itinerary.", id 2) uses exactly bare "FXP" and gets this same kind of single-fare-line
-  // response. This screen's own captured response (id 3: a single "01 HA21 4046" fare
-  // line, the same shape as a single-option FXP price display) confirms bare "FXP" is what
-  // was actually run to produce it -- "/X0" was never part of the real entry.
-  'agency-25--2': ['FXP'],
+  // recorded answer "FXP/X0" uses a modifier that appears nowhere else in the corpus and
+  // is never taught anywhere -- a data-entry corruption, not a real transaction code. The
+  // real command is "FXX", taught explicitly in Classroom lesson 24 part B (LSN24B.DAT,
+  // id5): "The following entry will price an itinerary without creating a TST: FXX. When
+  // this entry is input, a ticket image will be displayed, but a TST will not be attached
+  // to the PNR" -- and reinforced by that same lesson's own review question (id13): "What
+  // entry would be used to price an itinerary without creating a Transitional Stored
+  // Ticket?" / answer "FXX". That phrasing is a near-verbatim match for this screen's own
+  // instruction. Bare "FXP" (used elsewhere in this course, e.g. Agency lesson 24's
+  // identically-worded "Price the itinerary." step) is a different entry: per Classroom
+  // lesson 24's main teaching (id4), its TST is "attached to the PNR when the agent ends
+  // the transaction" -- i.e. FXP still produces a TST eventually (at ET), just deferred,
+  // whereas FXX is the one command in this course that never attaches a TST at all, which
+  // is what this screen's instruction specifically asks for.
+  'agency-25--2': ['FXX'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
