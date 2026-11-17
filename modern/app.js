@@ -1225,6 +1225,81 @@ const SCREEN_OUTPUT_FIXES = {
     '  5 AP PAR 01 73 46 33 20-H',
     '  6 TK TL22APR/PARAF2330',
   ],
+  // Classroom lesson 30 (Reference Information), screens id3, id4 and id7: three
+  // execution steps in a row ("Which entry would be used to display airline
+  // information?" / id2's own answer "GG AIR", then id3's own "Input the entry to
+  // display hotel information" -> "GG HTL", then id6's "What entry would be used to
+  // display information about London-Heathrow Airport?" -> "GG APT LHR") whose
+  // own captured response is simply missing from the original .DAT -- each of
+  // these three screens has no type-1 output at all, so the student sees the
+  // previous screen's content just sit there instead of a new response.
+  // id3 (response to id2's bare "GG AIR"): this exact command is asked TWICE in
+  // this lesson -- again at id7 ("Input the entry to display airline information."),
+  // whose own response IS captured for real, two screens later at id8 (the "GDS
+  // PARTICIPATING CARRIERS" page). Since it's the identical bare command retrieving
+  // the identical reference page, id3's missing response is simply that same real
+  // capture, reused verbatim rather than invented.
+  'classroom-30--3': [
+    '             **********************************                ',
+    '             * GDS PARTICIPATING CARRIERS     *                ',
+    '             **********************************                ',
+    '                                                               ',
+    'THESE PAGES AIM AT PROVIDING YOU WITH ACCESS AND FUNCTION      ',
+    'LEVELS OF GDS PARTICIPATING CARRIERS WHICH MAINTAIN THEIR  ',
+    'SCHEDULES AND AVAILABILITY IN GDS SYSTEM. THEY ALSO SHOW   ',
+    'THE AIRLINES USING AIS PAGES TO INFORM YOU ON COMMERCIAL,      ',
+    'MARKETING, OPERATIONAL AND GENERAL MARKET ISSUES.              ',
+    '                                                               ',
+    'ACCESS AND FUNCTION LEVELS .................... GP ACC         ',
+    'AIS ........................................... GP AIS         ',
+    'GDS AIR IN FIGURES ............................ GP FIG         ',
+    'GDS ACCESS CARRIERS     ....................... GP AMA         ',
+  ],
+  // id4 (response to id3's bare "GG HTL"): no bare hotel-topic menu is ever captured
+  // anywhere in this lesson's three files, unlike "GG AIR" above -- only specific
+  // hotel-chain sub-pages are (id0 of part B: INTER-CONTINENTAL, "IC"; part B id4:
+  // ITT SHERATON; and this lesson's own later screens teach "HI" and "HY" as further
+  // chain codes, GG HTL HI / GG HTL HY). Built from scratch, but in the exact shape
+  // this lesson already uses twice for a bare reference-topic command (banner box,
+  // one-line purpose statement, then a dotted "TOPIC .... ENTRY" list -- see the GG
+  // AIR page just above and the real GGAIS main menu, id5) and listing only the
+  // hotel-chain codes this lesson itself already teaches or captures for real.
+  'classroom-30--4': [
+    '             **********************************                ',
+    '             * GDS HOTEL CHAINS               *                ',
+    '             **********************************                ',
+    '                                                               ',
+    'THESE PAGES PROVIDE INFORMATION ON HOTEL CHAINS PARTICIPATING  ',
+    'IN THE GDS INFORMATION SYSTEM. THE APPLICABLE ENTRY IS SHOWN   ',
+    'FOR EACH CHAIN BELOW.                                          ',
+    '                                                               ',
+    'HOLIDAY INN ..................................... GG HTL HI    ',
+    'INTER-CONTINENTAL ................................ GG HTL IC   ',
+    'ITT SHERATON ...................................... GG HTL SI  ',
+    'HYATT ............................................. GG HTL HY  ',
+  ],
+  // id7 (response to id6's "GG APT LHR"): no real London-Heathrow capture exists
+  // anywhere in the corpus, but this exact "GENERAL INFORMATION" airport-page
+  // template is captured for real later in this same lesson (part B, id15: the
+  // response to "GG APT LGW", London-Gatwick) -- reused field-for-field (GMT offset,
+  // country line, position-from-London line, two contact numbers), with only the
+  // airport-specific values changed: Heathrow's real position is ~14 miles/23km west
+  // of London (Gatwick's own real capture says 28mls/46kms south), and the phone
+  // numbers follow that same real capture's UK "(44) ..." formatting.
+  'classroom-30--7': [
+    '                       GENERAL INFORMATION   EN  23JAN22 0842Z   ',
+    'LONDON HEATHROW AIRPORT                                          ',
+    '---------------------------------------------------------------  ',
+    'GMT PLUS 0000 (PLUS 0100 25MAR22-28OCT22)                        ',
+    '                                                                 ',
+    'UNITED KINGDOM GB                                                ',
+    '                                                                 ',
+    'POSITION OF AIRPORT   : 14MLS/23KMS W OF LONDON                  ',
+    '                                                                 ',
+    'ENQUIRIES PHONE NUMBER: (44) 844 335 1801                        ',
+    '                                                                 ',
+    'FLIGHT INFORMATION NO : (44) 844 335 1802                        ',
+  ],
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
