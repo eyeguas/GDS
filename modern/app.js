@@ -1187,6 +1187,44 @@ const SCREEN_OUTPUT_FIXES = {
   // id15 is a side lookup, not a new profile to transfer from) -- so, unlike id13's answer,
   // this one includes line 13, giving all 13 lines instead of 12, which is exactly the "same
   // question shape, different (larger) answer" pair this lesson is drawing between the two
+  // Agency lesson 25, screen id3: the next screen's own instruction ("Display the PNR. Then
+  // price only the Newark-Miami segment.") shows what's already on screen on arrival -- the
+  // response to id2's own entry (see the matching ANSWER_FIXES entry, "FXX/S2-3") -- followed
+  // by a fresh PNR recap for id3's own "Display the PNR" half. Only that first part (the fare
+  // response) is replaced here; the PNR recap after it is real captured data and untouched.
+  // The original fare response priced the FULL 3-segment itinerary (PAR-EWR/EWR-MIA/MIA-PAR,
+  // NUC745.36, EUR4046 total) -- the response to a bare "FXP"/"FXX", not to "FXX/S2-3". Scoped
+  // to just segments 2-3, the return leg's row is dropped from the flight grid, and the fare
+  // breakdown keeps this exact PNR's own real per-segment NUC amounts (EWR290.00, MIA126.36)
+  // and real exchange rate (ROE5.2466) verbatim, recomputed the same way this fare construction
+  // already demonstrates for itself (NUC745.36 x ROE5.2466 = EUR3910.6, displayed rounded as
+  // "EUR 3911" -- confirming EUR_fare = round(NUC_total x ROE) as the formula this exact PNR's
+  // fare construction actually uses): NUC416.36 x 5.2466 = EUR2184.47, rounded to "EUR 2184".
+  // The two real taxes (EUR17 FR departure tax, EUR118 US arrival tax) are kept unchanged, since
+  // both are charged on sectors still flown here (departing France, arriving the US) regardless
+  // of whether the return to Paris is priced in the same transaction -- giving a grand total of
+  // EUR2184 + 17 + 118 = EUR2319.
+  'agency-25--3': [
+    ' 01 HA21          2319 *                       * RESR * YES *',
+    '------------------------------------------------------------ ',
+    '     AL FLGT  BK   DATE  TIME  FARE BASIS      NVB  NVA   BG ',
+    '  PAR',
+    '  EWR CO 0057 Y Y 12MAY 1055 OK Y              12MAY12MAY PC',
+    '  MIA CO 0493 Y Y 22MAY 1230 OK Y              22MAY22MAY PC',
+    ' ',
+    ' EUR     2184         PAR CO EWR290.00 CO MIA126.36NUC416.36',
+    '                      END ROE5.2466SITI',
+    ' EUR       17FR',
+    ' EUR      118US',
+    ' EUR     2319',
+    'RP/PARAF2330/PARAF2330          0999ZZ 16APR /1123Z   CHG6WE',
+    'ROUSSEAU/JEAN MR',
+    '  2  CO  57 Y 12MAY 5 ORYEWR HK1            1055 1405   *1A/',
+    '  3  CO 493 Y 22MAY 1 EWRMIA HK1            1230 1530   *1A/',
+    '  4  CO4154 Y 06JUN 7 MIAORY HK1            1410 0830+1 *1A/',
+    '  5 AP PAR 01 73 46 33 20-H',
+    '  6 TK TL22APR/PARAF2330',
+  ],
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -1386,22 +1424,23 @@ const ANSWER_FIXES = {
     'OSKL 1CHD AGE 9/P3', 'OSKL 1CHD 9 YRS/P3', 'OSKL 1CHD 9YRS/P3',
     'OS KL 1CHD AGED 9/P3', 'OS KL 1CHD AGE 9/P3', 'OS KL 1CHD 9 YRS/P3', 'OS KL 1CHD 9YRS/P3',
   ],
-  // Agency lesson 25, screen id 2 ("Price the itinerary without creating a TST."): the
-  // recorded answer "FXP/X0" uses a modifier that appears nowhere else in the corpus and
-  // is never taught anywhere -- a data-entry corruption, not a real transaction code. The
-  // real command is "FXX", taught explicitly in Classroom lesson 24 part B (LSN24B.DAT,
-  // id5): "The following entry will price an itinerary without creating a TST: FXX. When
-  // this entry is input, a ticket image will be displayed, but a TST will not be attached
-  // to the PNR" -- and reinforced by that same lesson's own review question (id13): "What
-  // entry would be used to price an itinerary without creating a Transitional Stored
-  // Ticket?" / answer "FXX". That phrasing is a near-verbatim match for this screen's own
-  // instruction. Bare "FXP" (used elsewhere in this course, e.g. Agency lesson 24's
-  // identically-worded "Price the itinerary." step) is a different entry: per Classroom
-  // lesson 24's main teaching (id4), its TST is "attached to the PNR when the agent ends
-  // the transaction" -- i.e. FXP still produces a TST eventually (at ET), just deferred,
-  // whereas FXX is the one command in this course that never attaches a TST at all, which
-  // is what this screen's instruction specifically asks for.
-  'agency-25--2': ['FXX'],
+  // Agency lesson 25, screen id 2 ("The passenger will depart from Orly to Newark (EWR) on
+  // 12 May. From there, he will travel to Miami (MIA) on 22 May. Price the itinerary
+  // without creating a TST."): the recorded answer "FXP/X0" uses a modifier that appears
+  // nowhere else in the corpus and is never taught anywhere -- a data-entry corruption, not
+  // a real transaction code. "Without creating a TST" means the real command is "FXX", not
+  // "FXP": Classroom lesson 24 part B (LSN24B.DAT, id5) teaches "FXX" with that exact
+  // phrase ("will price an itinerary without creating a TST... a TST will not be attached
+  // to the PNR"), whereas that same lesson's main teaching (id4) says bare "FXP"'s TST is
+  // merely deferred -- "attached to the PNR when the agent ends the transaction" -- not
+  // permanently absent. And the instruction's own wording only narrates the two legs the
+  // student is retrieving the PNR to check -- Orly-Newark and Newark-Miami -- never
+  // mentioning the PNR's 3rd segment (the 6 June return to Orly), so the itinerary to price
+  // is scoped to just those two segments: "/S2-3". Both the hyphen-range and comma-list
+  // forms of that same segment set are accepted, matching this course's own established
+  // precedent that the two are interchangeable (Classroom lesson 25, screen id5: "FXP/S3-5"
+  // and "FXP/S3,4,5" are both given as accepted answers for the very same segment range).
+  'agency-25--2': ['FXX/S2-3', 'FXX/S2,3'],
 };
 function applyAnswerFix(mode, number, part, screen) {
   const fix = ANSWER_FIXES[`${mode}-${number}-${part}-${screen.id}`];
@@ -1540,25 +1579,6 @@ const TEXT_FIXES = {
     ['Date range 2              3 - 6 days', 'D2  3 - 6 days'],
     ['Date range 3              7 - 10 days', 'D3  7 - 10 days'],
     ['Date range 4              11 days or more', 'D4  11 days or more'],
-  ],
-  // Agency lesson 25, screen id 2 (see the matching ANSWER_FIXES entry above, "FXX" not
-  // "FXP"): the original wording only narrates the outbound legs the student is retrieving
-  // the PNR to check (Orly-Newark-Miami), leaving two real ambiguities an attentive student
-  // can trip on, confirmed by this very conversation. First, the PNR's own 3rd segment --
-  // the 6 June return to Orly -- is never mentioned, so "price the itinerary" reads as if it
-  // might mean only the two legs just described rather than all three; the screen's own
-  // captured response (next screen, a three-segment fare with PAR-EWR/EWR-MIA/MIA-PAR all
-  // priced) settles this, so the return is called out explicitly here. Second, "without
-  // creating a TST" alone doesn't rule out "FXP", since Classroom 24 teaches that bare FXP
-  // also never creates a TST -- a TST only ever becomes attached later, at ET -- yet FXP is
-  // the wrong answer here, because unlike FXX, FXP's TST is merely deferred, not permanently
-  // absent, which is exactly what distinguishes it from the no-TST-ever "FXX" this screen
-  // is after. Spelling that distinction out, without naming either entry code, so the
-  // recall this screen tests (bare FXX vs. bare FXP, both taught in Classroom 24) stays the
-  // point of the exercise.
-  'agency-25--2': [
-    ['on 22 May. Price the itinerary', 'on 22 May, and already has a return to Orly booked for 6 June. Price the complete itinerary'],
-    ['without creating a TST.', 'without creating a Transitional Stored Ticket at all -- not even one that would only be attached later, when the transaction is ended.'],
   ],
 };
 function applyTextFix(mode, number, part, screen) {
