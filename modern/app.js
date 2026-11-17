@@ -1541,6 +1541,25 @@ const TEXT_FIXES = {
     ['Date range 3              7 - 10 days', 'D3  7 - 10 days'],
     ['Date range 4              11 days or more', 'D4  11 days or more'],
   ],
+  // Agency lesson 25, screen id 2 (see the matching ANSWER_FIXES entry above, "FXX" not
+  // "FXP"): the original wording only narrates the outbound legs the student is retrieving
+  // the PNR to check (Orly-Newark-Miami), leaving two real ambiguities an attentive student
+  // can trip on, confirmed by this very conversation. First, the PNR's own 3rd segment --
+  // the 6 June return to Orly -- is never mentioned, so "price the itinerary" reads as if it
+  // might mean only the two legs just described rather than all three; the screen's own
+  // captured response (next screen, a three-segment fare with PAR-EWR/EWR-MIA/MIA-PAR all
+  // priced) settles this, so the return is called out explicitly here. Second, "without
+  // creating a TST" alone doesn't rule out "FXP", since Classroom 24 teaches that bare FXP
+  // also never creates a TST -- a TST only ever becomes attached later, at ET -- yet FXP is
+  // the wrong answer here, because unlike FXX, FXP's TST is merely deferred, not permanently
+  // absent, which is exactly what distinguishes it from the no-TST-ever "FXX" this screen
+  // is after. Spelling that distinction out, without naming either entry code, so the
+  // recall this screen tests (bare FXX vs. bare FXP, both taught in Classroom 24) stays the
+  // point of the exercise.
+  'agency-25--2': [
+    ['on 22 May. Price the itinerary', 'on 22 May, and already has a return to Orly booked for 6 June. Price the complete itinerary'],
+    ['without creating a TST.', 'without creating a Transitional Stored Ticket at all -- not even one that would only be attached later, when the transaction is ended.'],
+  ],
 };
 function applyTextFix(mode, number, part, screen) {
   const fixes = TEXT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
