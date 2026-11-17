@@ -1300,6 +1300,49 @@ const SCREEN_OUTPUT_FIXES = {
     '                                                                 ',
     'FLIGHT INFORMATION NO : (44) 844 335 1802                        ',
   ],
+  // Same lesson, two screens further on: id11 and id12 are each missing the response to
+  // the PREVIOUS screen's own execution answer, same pattern as id3/id4/id7 just above.
+  // id11 (response to id10's "GP5"): id9/id10 both teach ways to scroll "the display" /
+  // "the information page" (MD/MU/MT/MB, then MD12/MU22/MS80/GP6) -- definite articles
+  // both times, meaning these all navigate the one AIS document already open on screen
+  // since id8 (the GDS PARTICIPATING CARRIERS page), not a jump to an unrelated page
+  // elsewhere in the system. That page's own 4-topic list (GP ACC/AIS/FIG/AMA) is a
+  // documented real capture, but shows only 4 of what a real multi-screen AIS reference
+  // document would hold -- "page 5" is a further page of that same document, continuing
+  // with two more bare, standalone reference entries this exact lesson already teaches
+  // elsewhere (part C, id0: "GG^ NEWS^" on its own displays product news; part C, id3:
+  // "HE^" on its own displays the main help headings) -- unlike GG^ COU^ or GG^ CAR^,
+  // which this lesson only ever shows requiring a code suffix, these two are the only
+  // other topics this lesson teaches as complete, suffix-free entries, so they're what a
+  // further page of this same reference document would plausibly list next.
+  'classroom-30--11': [
+    '             **********************************                ',
+    '             * GDS PARTICIPATING CARRIERS     *                ',
+    '             **********************************                ',
+    '                                                               ',
+    'FURTHER GENERAL REFERENCE TOPICS, CONTINUED FROM PAGE 1:       ',
+    '                                                               ',
+    'AIS PRODUCT NEWS ............................... GG NEWS       ',
+    'GDS ENTRY HELP .................................. HE          ',
+  ],
+  // id12 (response to id11's "GG AIR AA", American Airlines): this exact template is
+  // captured for real two screens later in this lesson for a different carrier (id13:
+  // "WELCOME TO IBERIA AIS", the response to id12's own "GG AIR IB") -- reused here
+  // field-for-field (banner line, TOPIC/ENTRY column header, dashes), keeping only the
+  // topics that real Iberia capture itself shows as generic/universal across any airline
+  // (alphabetical index, addons, agency promotions, baggage policy) and dropping the ones
+  // that are specifically Spain/Iberia regional content (AIS PROCEDIMIENTOS, ALICANTE
+  // NOTICIAS, ANDALUCIA, AVIACO, BALEARES), which would make no sense relabelled for AA.
+  'classroom-30--12': [
+    '                    ** WELCOME TO AMERICAN AIRLINES AIS **',
+    ' ',
+    '  TOPIC                                 ENTER',
+    '  -----                                 -----',
+    '  ALPHABETICAL INDEX            GG AIR AA INDEX',
+    '  ADDONS                        GG AIR AA ADDONS',
+    '  AGENCIES PROMOTIONS           GG AIR AA AGEN ',
+    '  BAGGAGE POLICY                GG AIR AA BAGS',
+  ],
 };
 function applyOutputFix(mode, number, part, screen) {
   const fix = SCREEN_OUTPUT_FIXES[`${mode}-${number}-${part}-${screen.id}`];
